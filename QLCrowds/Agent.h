@@ -23,7 +23,7 @@ public:
 
 	std::vector<std::vector<std::vector<float>>> Q;
 
-	float getAction(Environment & env);
+	int getAction(Environment & env);
 	void train(std::tuple<std::pair<int,int>, int, std::pair<int, int>, float, bool> t);
 	void displayGreedyPolicy();
 	std::default_random_engine generator;

@@ -31,8 +31,8 @@ void Environment::buildRewards()
 		}
 	}
 
-	R[ySize - 1][xSize - 1][action_dict.at("down")] = rGoal;
-	R[ySize - 1][xSize - 1][action_dict.at("right")] = rGoal;
+	R[ySize - 2][xSize - 1][action_dict.at("down")] = rGoal;
+	R[ySize - 1][xSize - 2][action_dict.at("right")] = rGoal;
 }
 
 std::tuple<std::pair<int, int>, float, bool> Environment::step(int action)

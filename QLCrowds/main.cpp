@@ -14,7 +14,6 @@ void main() {
 		int iter_episode = 0;
 		float reward_episode = 0;
 		auto state = env.reset();
-		int index = 0;
 		while (true) {
 			//std::cout << "Iteration : " << index << std::endl;
 			//std::cout << "%%%%%%%%%%%%%%" << std::endl;
@@ -29,13 +28,12 @@ void main() {
 
 			iter_episode++;
 			reward_episode += reward;
-			std::cout << "R:" << reward_episode << std::endl;
+			//std::cout << "R:" << reward_episode << std::endl;
 
 			if (done) {
 				break;
 			}
 			state = state_next;
-			index++;
 		}
 		agent.epsilon = std::fmax(agent.epsilon * agent.epsilonDecay, 0.01);
 

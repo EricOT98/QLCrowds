@@ -26,51 +26,42 @@ Agent::~Agent()
 {
 }
 
-float Agent::getAction(Environment & env)
+int Agent::getAction(Environment & env)
 {
-	std::uniform_real_distribution<float> distribution(0.0, 1.0);
-	//float randVal = distribution(generator);
-	float randVal = 0.8;
-	//std::cout << randVal << std::endl;
+	std::random_device rand_dev;
+	std::mt19937 generator(rand_dev());
+	std::uniform_real_distribution<double> distr(0, 1);
+	double randVal = distr(generator);
 	if (randVal < epsilon) {
-		//std::cout << "Explore" << std::endl;
-		//Explore
 		auto actions_allowed = env.allowedActions();
-		int index = (std::rand() % (actions_allowed.size()));
-		//std::cout << "Index:" << index << std::endl;
-		return actions_allowed[index];
+		std::uniform_int_distribution<int>  distr(0, actions_allowed.size() - 1);
+		int index = distr(generator);
+		return actions_allowed.at(index);
 	}
 	else {
-		//std::cout << "Exploit" << std::endl;
-		//Exploit
-		std::pair<int, int> state = env.state;
 		auto actions_allowed = env.allowedActions();
+		auto & state = env.state;
+		auto actionValues = Q[state.first][state.second];
 
-		std::vector<float> actionsToPickFrom;
-		auto & availableActions = Q[state.first][state.second];
-
-		std::map<int, float> actionsToEpsilon;
-
-		for (auto & action : actions_allowed) {
-			actionsToEpsilon.insert(std::make_pair(action,availableActions[action]));
+		std::map<int, float> qs;
+		for (int action : actions_allowed) {
+			qs[action] = actionValues.at(action);
 		}
-		
-		std::vector<int> qS;
-		auto maxElement = *(std::max_element(actionsToEpsilon.begin(), actionsToEpsilon.end()));
-		std::vector<int> maximumActions;
-		for (auto const & ae : actionsToEpsilon) {
-			if (ae.second == maxElement.second) {
-				maximumActions.push_back(ae.first);
+		float maxVal = qs.begin()->second;
+		for (auto & actionMapping : qs) {
+			if (actionMapping.second > maxVal) {
+				maxVal = actionMapping.second;
 			}
 		}
-
-		if (!maximumActions.empty()) {
-			int index = std::rand() % maximumActions.size();
-			//std::cout << maximumActions[index];
-			return maximumActions[index];
+		std::vector<int> actions_greedy;
+		for (auto & actionMapping : qs) {
+			if (actionMapping.second == maxVal) {
+				actions_greedy.push_back(actionMapping.first);
+			}
 		}
-		else
-			return 0.0f;
+		std::uniform_int_distribution<int>  distr(0, actions_greedy.size() - 1);
+		int index = distr(generator);
+		return actions_greedy.at(index);
 	}
 }
 
@@ -102,7 +93,8 @@ void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, floa
 	auto nextActions = Q[state_next.first][state_next.second];
 	//self.Q[sa] += self.beta * (reward + self.gamma * np.max(self.Q[state_next]) - self.Q[sa])
 	auto maxElement = *std::max_element(nextActions.begin(), nextActions.end());
-	sa += beta * (reward + gamma * maxElement - sa);
+	Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - Q[state.first][state.second][action]);
+
 }
 
 void Agent::displayGreedyPolicy()
