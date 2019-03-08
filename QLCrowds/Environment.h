@@ -4,6 +4,14 @@
 #include <vector>
 #include <map>
 #include <tuple>
+#include <SDL.h>
+
+struct Line {
+	int x1;
+	int x2;
+	int y1;
+	int y2;
+};
 
 class Environment {
 public:
@@ -25,6 +33,16 @@ public:
 	std::pair<int, int> reset();
 	std::vector<int> allowedActions();
 	std::pair<int, int> state;
+
+	// display functions
+	void generateGridLines();
+	void render(SDL_Renderer & renderer);
+	void resizeGridTo(int x, int y, int width, int height);
+	int cellW = 32;
+	int cellH = 32;
+	std::vector<Line> gridLines;
+	int gridPosX = 0;
+	int gridPosY = 0;
 };
 
 #endif //!ENVIRONMENT_H

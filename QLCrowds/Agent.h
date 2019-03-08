@@ -4,9 +4,10 @@
 #include <iostream>
 #include <vector>
 #include <tuple>
+#include <random>
 
 #include "Environment.h"
-#include <random>
+#include "Sprite.h"
 
 class Agent {
 public:
@@ -27,6 +28,7 @@ public:
 	void train(std::tuple<std::pair<int,int>, int, std::pair<int, int>, float, bool> t);
 	void displayGreedyPolicy();
 	std::default_random_engine generator;
+	Sprite m_sprite;
 };
 
 #endif //!AGENT_H
