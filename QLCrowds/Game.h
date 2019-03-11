@@ -7,6 +7,13 @@
 #include "Environment.h"
 #include "Agent.h"
 
+struct EpisodeVals {
+	int action;
+	std::pair<int, int> state;
+	std::pair<int, int> nextState;
+	float reward;
+};
+
 class Game {
 public:
 	Game();
@@ -16,6 +23,7 @@ public:
 	void render();
 	void run();
 	void processEvents();
+	void saveEpisode();
 private:
 	SDL_Window * m_window;
 	SDL_Renderer* m_renderer;
@@ -26,7 +34,14 @@ private:
 	bool m_quit;
 	SDL_Event m_event;
 	Environment env;
-	Agent agent;
+	Agent * agent;
+	std::vector<std::vector<EpisodeVals>> m_episodes;
+	int currentEpisode = 0;
+	int currentIteration;
+	bool lerping = false;
+	float lerpPercent = 0.03;
+	float lerpMax = 1.f;
+	float currentPercent = 0.0f;
 };
 
 #endif // !GAME_H

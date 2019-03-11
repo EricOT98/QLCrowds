@@ -107,7 +107,7 @@ void Environment::render(SDL_Renderer & renderer)
 	for (auto & line : gridLines) {
 		SDL_RenderDrawLine(&renderer, line.x1, line.y1, line.x2, line.y2);
 	}
-	SDL_SetRenderDrawColor(&renderer, 255, 255, 255, 255);
+	SDL_SetRenderDrawColor(&renderer, 0, 0, 0, 255);
 }
 
 void Environment::resizeGridTo(int x, int y, int width, int height)

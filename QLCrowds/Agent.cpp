@@ -2,7 +2,7 @@
 #include <random>
 #include <map>
 
-Agent::Agent(Environment &env)
+Agent::Agent(Environment &env, SDL_Renderer * renderer)
 {
 	stateDim = std::make_pair(env.ySize, env.xSize);
 	actionDim = env.actionDim;
@@ -20,6 +20,8 @@ Agent::Agent(Environment &env)
 			}
 		}
 	}
+	m_sprite.loadTexture("Assets/agent.png", renderer);
+	m_sprite.setBounds(env.cellW, env.cellH);
 }
 
 Agent::~Agent()
@@ -83,17 +85,11 @@ void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, floa
 	auto reward = std::get<3>(t);
 	bool done = std::get<4>(t);
 
-	//std::pair<int, int> sa(state.first,state.second);
-
-	/*auto q = Q[state_next.first][state_next.second];
-	float & actionToMod = Q[sa.first][sa.second][action];
-	auto maxElement = std::max_element(q.begin(), q.end());
-	actionToMod += beta * (reward + gamma * *(maxElement) - actionToMod);*/
 	float & sa = Q[state.first][state.second][action];
 	auto nextActions = Q[state_next.first][state_next.second];
-	//self.Q[sa] += self.beta * (reward + self.gamma * np.max(self.Q[state_next]) - self.Q[sa])
+
 	auto maxElement = *std::max_element(nextActions.begin(), nextActions.end());
-	Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - Q[state.first][state.second][action]);
+	Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - sa);
 
 }
 

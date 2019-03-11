@@ -11,13 +11,13 @@
 
 class Agent {
 public:
-	Agent(Environment & env);
+	Agent(Environment & env, SDL_Renderer * renderer);
 	~Agent();
 
 	std::pair<int, int> stateDim;
 	std::pair<int, int> actionDim;
 
-	float epsilon = 1.0f;			// Initial exploration prob
+	float epsilon = 1.f;			// Initial exploration prob
 	float epsilonDecay = 0.99f;		//Epsilon decay after each episode
 	float beta = 0.99f;				// Learning Rate
 	float gamma = 0.99f;			//DIscount factor
