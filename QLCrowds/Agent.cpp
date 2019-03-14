@@ -13,13 +13,7 @@ Agent::Agent(Environment &env, SDL_Renderer * renderer)
 			Q.at(row).at(col).resize(actionDim.first);
 		}
 	}
-	for (int row = 0; row < stateDim.second; ++row) {
-		for (int col = 0; col < stateDim.first; ++col) {
-			for (int action = 0; action < actionDim.first; ++action) {
-				Q[row][col][action] = 0;
-			}
-		}
-	}
+	reset();
 	m_sprite.loadTexture("Assets/agent.png", renderer);
 	m_sprite.setBounds(env.cellW, env.cellH);
 }
@@ -67,6 +61,10 @@ int Agent::getAction(Environment & env)
 	}
 }
 
+/// <summary>
+/// Train th eagent using the off policy Q learning method
+/// </summary>
+/// <param name="t"></param>
 void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, float, bool> t)
 {
 	//# -----------------------------
@@ -93,6 +91,35 @@ void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, floa
 
 }
 
+int Agent::getActionRBMBased(Environment & env)
+{
+	auto allowedActions = env.allowedActions();
+	auto & state = env.state;
+	std::vector<int> possibleActions;
+	std::pair<int, int> cellsfromGoal;
+	cellsfromGoal.first = abs(49 - state.first);
+	cellsfromGoal.second = abs(49 - state.second);
+	for (auto & action : allowedActions) {
+		std::pair<int, int> nextState;
+		auto actionDir = env.actionCoords[action];
+		// 0 x 1 y
+		if (abs(49 - (state.first + actionDir.first)) < cellsfromGoal.first ||
+			abs(49 - (state.second + actionDir.second)) < cellsfromGoal.second) {
+			possibleActions.push_back(action);
+		}
+	}
+
+	std::random_device rand_dev;
+	std::mt19937 generator(rand_dev());
+	std::uniform_int_distribution<int>  distr(0, possibleActions.size() - 1);
+	int index = distr(generator);
+	return possibleActions.at(index);
+}
+
+void Agent::trainRBM(std::tuple<std::pair<int, int>, int, std::pair<int, int>, float, bool> t)
+{
+}
+
 void Agent::displayGreedyPolicy()
 {
 	std::vector<std::vector<float>> greedyPolicy;
@@ -106,5 +133,20 @@ void Agent::displayGreedyPolicy()
 			std::cout << greedyPolicy[row][col] << ",";
 		}
 		std::cout << "]," << std::endl;
+	}
+}
+
+void Agent::reset()
+{
+	epsilon = 1.f;
+	epsilonDecay = 0.99f;
+	beta = 0.99f;
+	gamma = 0.99f;
+	for (int row = 0; row < stateDim.second; ++row) {
+		for (int col = 0; col < stateDim.first; ++col) {
+			for (int action = 0; action < actionDim.first; ++action) {
+				Q[row][col][action] = 0;
+			}
+		}
 	}
 }

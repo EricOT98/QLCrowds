@@ -26,7 +26,11 @@ public:
 
 	int getAction(Environment & env);
 	void train(std::tuple<std::pair<int,int>, int, std::pair<int, int>, float, bool> t);
+
+	int getActionRBMBased(Environment & env);
+	void trainRBM(std::tuple<std::pair<int, int>, int, std::pair<int, int>, float, bool> t);
 	void displayGreedyPolicy();
+	void reset();
 	std::default_random_engine generator;
 	Sprite m_sprite;
 };

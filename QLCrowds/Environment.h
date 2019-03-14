@@ -25,7 +25,7 @@ public:
 
 	int grid[xSize][ySize];
 	std::map<std::string, int> action_dict;
-	int actionCoords[4][2] = {{-1, 0}, { 0, 1}, {1, 0}, {0, -1}};
+	std::pair<int, int> actionCoords[4] = {{-1, 0}, { 0, 1}, {1, 0}, {0, -1}};
 	std::vector<std::vector<std::vector<float>>> R;
 
 	void buildRewards();

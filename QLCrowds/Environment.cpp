@@ -39,8 +39,8 @@ void Environment::buildRewards()
 std::tuple<std::pair<int, int>, float, bool> Environment::step(int action)
 {
 	std::pair<int, int> next_state(
-		state.first + actionCoords[action][0],
-		state.second + actionCoords[action][1]);
+		state.first + actionCoords[action].first,
+		state.second + actionCoords[action].second);
 
 	float reward = R[state.first][state.second][action];
 
@@ -98,7 +98,6 @@ void Environment::generateGridLines()
 		l.y2 = endPosY;
 		gridLines.push_back(l);
 	}
-	int test = 0;
 }
 
 void Environment::render(SDL_Renderer & renderer)
