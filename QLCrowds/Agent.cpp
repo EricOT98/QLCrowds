@@ -97,8 +97,8 @@ int Agent::getActionRBMBased(Environment & env)
 	auto & state = env.state;
 	std::vector<int> possibleActions;
 	std::pair<int, int> cellsfromGoal;
-	cellsfromGoal.first = abs(49 - state.first);
-	cellsfromGoal.second = abs(49 - state.second);
+	cellsfromGoal.first = abs(stateDim.first - 1 - state.first);
+	cellsfromGoal.second = abs(stateDim.second - 1 - state.second);
 	for (auto & action : allowedActions) {
 		std::pair<int, int> nextState;
 		auto actionDir = env.actionCoords[action];

@@ -15,8 +15,8 @@ struct Line {
 
 class Environment {
 public:
-	static const int xSize = 8;
-	static const int ySize = 8;
+	static const int xSize = 64;
+	static const int ySize = 64;
 	Environment();
 	~Environment();
 
@@ -43,6 +43,7 @@ public:
 	std::vector<Line> gridLines;
 	int gridPosX = 0;
 	int gridPosY = 0;
+	std::vector<std::vector<int>> m_heatMap;
 };
 
 #endif //!ENVIRONMENT_H

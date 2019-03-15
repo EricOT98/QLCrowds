@@ -24,6 +24,7 @@ Game::Game()
 		}
 		SDL_RenderSetLogicalSize(m_renderer, m_windowWidth, m_windowHeight);
 		SDL_SetRenderDrawColor(m_renderer, 255, 255, 255, 255);
+		SDL_SetRenderDrawBlendMode(m_renderer, SDL_BlendMode::SDL_BLENDMODE_BLEND);
 		//Fill the surface white
 	}
 	//}
@@ -195,7 +196,7 @@ void Game::runAlgorithm()
 				auto reward = std::get<1>(state_vals);
 				auto done = std::get<2>(state_vals);
 
-					agent->train(std::make_tuple(state, action, state_next, reward, done));
+				agent->train(std::make_tuple(state, action, state_next, reward, done));
 
 				iter_episode++;
 				reward_episode += reward;

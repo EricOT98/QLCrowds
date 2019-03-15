@@ -9,6 +9,13 @@ Environment::Environment()
 	action_dict.insert(std::make_pair<std::string, int>("right", 1));
 	action_dict.insert(std::make_pair<std::string, int>("down", 2));
 	action_dict.insert(std::make_pair<std::string, int>("left", 3));
+	m_heatMap.resize(stateDim.first);
+	for (int row = 0; row < stateDim.first; ++row) {
+		m_heatMap.at(row).resize(stateDim.second);
+		for (int col = 0; col < stateDim.second; ++col) {
+			m_heatMap[row][col] = 0;
+		}
+	}
 	buildRewards();
 	generateGridLines();
 }
@@ -38,6 +45,7 @@ void Environment::buildRewards()
 
 std::tuple<std::pair<int, int>, float, bool> Environment::step(int action)
 {
+	m_heatMap[state.first][state.second] += 1;
 	std::pair<int, int> next_state(
 		state.first + actionCoords[action].first,
 		state.second + actionCoords[action].second);
@@ -105,6 +113,22 @@ void Environment::render(SDL_Renderer & renderer)
 	SDL_SetRenderDrawColor(&renderer, 255, 0, 0, 255);
 	for (auto & line : gridLines) {
 		SDL_RenderDrawLine(&renderer, line.x1, line.y1, line.x2, line.y2);
+	}
+	SDL_Rect rect;
+	rect.w = cellW;
+	rect.h = cellH;
+
+	for (int row = 0; row < stateDim.first; ++row) {
+		rect.y = gridPosY + (row * cellH);
+		for (int col = 0; col < stateDim.second; ++col) {
+			rect.x = gridPosX + (col * cellW);
+			int alpha = m_heatMap[row][col];
+			if (alpha > 255)
+				alpha = 255;
+			SDL_SetRenderDrawColor(&renderer, 214, 79, 29, alpha);
+			SDL_RenderFillRect(&renderer, &rect);
+			SDL_SetRenderDrawColor(&renderer, 0, 0, 0, 255);
+		}
 	}
 	SDL_SetRenderDrawColor(&renderer, 0, 0, 0, 255);
 }
