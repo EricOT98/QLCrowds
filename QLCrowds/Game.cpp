@@ -194,7 +194,7 @@ void Game::runAlgorithm()
 				auto state_next = std::get<0>(state_vals);
 				//std::cout << "S:" << state_next.first << "," << state_next.second << std::endl;
 				auto reward = std::get<1>(state_vals);
-				auto done = std::get<2>(state_vals);
+				bool done = std::get<2>(state_vals);
 
 				agent->train(std::make_tuple(state, action, state_next, reward, done));
 
@@ -211,6 +211,7 @@ void Game::runAlgorithm()
 				if (iter_episode >= maxIterations)
 					done = true;
 				if (done) {
+					env.createHeatmapVals();
 					break;
 				}
 			}

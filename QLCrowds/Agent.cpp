@@ -102,9 +102,9 @@ int Agent::getActionRBMBased(Environment & env)
 	for (auto & action : allowedActions) {
 		std::pair<int, int> nextState;
 		auto actionDir = env.actionCoords[action];
-		// 0 x 1 y
-		if (abs(49 - (state.first + actionDir.first)) < cellsfromGoal.first ||
-			abs(49 - (state.second + actionDir.second)) < cellsfromGoal.second) {
+		// first row, second col
+		if (abs(stateDim.first - 1 - (state.first + actionDir.first)) < cellsfromGoal.first ||
+			abs(stateDim.second - 1- (state.second + actionDir.second)) < cellsfromGoal.second) {
 			possibleActions.push_back(action);
 		}
 	}
@@ -142,8 +142,8 @@ void Agent::reset()
 	epsilonDecay = 0.99f;
 	beta = 0.99f;
 	gamma = 0.99f;
-	for (int row = 0; row < stateDim.second; ++row) {
-		for (int col = 0; col < stateDim.first; ++col) {
+	for (int row = 0; row < stateDim.first; ++row) {
+		for (int col = 0; col < stateDim.second; ++col) {
 			for (int action = 0; action < actionDim.first; ++action) {
 				Q[row][col][action] = 0;
 			}
