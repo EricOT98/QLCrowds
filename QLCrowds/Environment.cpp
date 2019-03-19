@@ -1,5 +1,6 @@
 #include "Environment.h"
 #include <limits>
+#include <algorithm>
 
 /// <summary>
 /// Initializes a new instance of the <see cref="Environment"/> class.
@@ -23,6 +24,7 @@ Environment::Environment()
 	initFlags();
 	buildRewards();
 	generateGridLines();
+	m_tileFlags[1][0] |= QLCTileObstacle;
 }
 
 /// <summary>
@@ -50,8 +52,8 @@ void Environment::buildRewards()
 		}
 	}
 
-	R[ySize - 2][xSize - 1][action_dict.at("down")] = rGoal;
-	R[ySize - 1][xSize - 2][action_dict.at("right")] = rGoal;
+	/*R[ySize - 2][xSize - 1][action_dict.at("down")] = rGoal;
+	R[ySize - 1][xSize - 2][action_dict.at("right")] = rGoal;*/
 }
 
 /// <summary>
@@ -67,7 +69,7 @@ std::tuple<std::pair<int, int>, float, bool> Environment::step(int action)
 		state.second + actionCoords[action].second);
 
 	float reward = R[state.first][state.second][action];
-	bool done = (next_state.first == ySize - 1) && (next_state.second == xSize - 1);
+	bool done = m_tileFlags[next_state.first][next_state.second] & QLCTileGoal;
 	state = next_state;
 	return std::make_tuple(next_state, reward, done);
 }
@@ -157,20 +159,22 @@ void Environment::render(SDL_Renderer & renderer)
 		SDL_RenderDrawLine(&renderer, line.x1, line.y1, line.x2, line.y2);
 	}
 	SDL_Rect rect;
-	rect.w = cellW;
-	rect.h = cellH;
+	rect.w = cellW - 1;
+	rect.h = cellH - 1;
 
 	for (int row = 0; row < stateDim.first; ++row) {
-		rect.y = gridPosY + (row * cellH);
+		rect.y = gridPosY + (row * cellH) + 1;
 		for (int col = 0; col < stateDim.second; ++col) {
-			rect.x = gridPosX + (col * cellW);
+			rect.x = gridPosX + (col * cellW) + 1;
 			int alpha = (m_heatMap[row][col] / (float)m_largestHeatMapVal) * 255;
 			if (alpha > 255)
 				alpha = 255;
-			if (row != stateDim.first - 1 || col != stateDim.second -1)
-				SDL_SetRenderDrawColor(&renderer, 214, 79, 29, alpha);
-			else 
+			if (m_tileFlags[row][col] & QLCTileGoal)
 				SDL_SetRenderDrawColor(&renderer, 0, 255, 0, 255);
+			else if (m_tileFlags[row][col] & QLCTileObstacle)
+				SDL_SetRenderDrawColor(&renderer, 0, 0, 255, 255);
+			else
+				SDL_SetRenderDrawColor(&renderer, 214, 79, 29, alpha);
 			SDL_RenderFillRect(&renderer, &rect);
 			SDL_SetRenderDrawColor(&renderer, 0, 0, 0, 255);
 		}
@@ -214,10 +218,48 @@ void Environment::createHeatmapVals()
 /// <param name="col">The col.</param>
 void Environment::addObstacle(int row, int col)
 {
-	float obsValue = std::numeric_limits<float>().min();
-	m_tileFlags[row][col] |= QLCTileObstacle;
+	m_tileFlags[row][col] ^= QLCTileObstacle;
 }
 
+void Environment::addGoal(int row, int col)
+{
+	float rGoal = 100;
+	float rNonGoal = -0.1f;
+	m_tileFlags[row][col] ^= QLCTileGoal;
+	bool active = m_tileFlags[row][col] & QLCTileGoal;
+	if (active) {
+		m_goals.push_back(std::make_pair(row, col));
+	}
+	else {
+		m_goals.erase(std::remove(m_goals.begin(), m_goals.end(), std::make_pair(row, col)), m_goals.end());
+	}
+	int goalValue = active ? rGoal : rNonGoal;
+	if (row > 0) {
+		auto & upFlags = m_tileFlags[row - 1][col];
+		if (!(upFlags & QLCTileObstacle))
+			R[row - 1][col][action_dict["down"]] = goalValue;
+	}
+	if (row < ySize - 1) {
+		auto & downFlags = m_tileFlags[row + 1][col];
+		if (!(downFlags & QLCTileObstacle))
+			R[row + 1][col][action_dict["up"]] = goalValue;
+	}
+	if (col > 0) {
+		auto & leftFlags = m_tileFlags[row][col - 1];
+		if (!(leftFlags & QLCTileObstacle))
+			R[row][col - 1][action_dict["right"]] = goalValue;
+	}
+	if (col < xSize - 1) {
+		auto & rightFlags = m_tileFlags[row][col + 1];
+		if (!(rightFlags & QLCTileObstacle))
+			R[row][col + 1][action_dict["left"]] = goalValue;
+	}
+}
+
+std::vector<std::pair<int, int>> & Environment::getGoals()
+{
+	return m_goals;
+}
 
 /// <summary>
 /// Resets the flags.
@@ -241,6 +283,15 @@ void Environment::initFlags()
 		m_tileFlags[row].resize(stateDim.second);
 		for (int col = 0; col < stateDim.second; ++col) {
 			m_tileFlags[row][col] = QLCTileEMPTY;
+		}
+	}
+}
+
+void Environment::clearHeatMap()
+{
+	for (int row = 0; row < stateDim.first; ++row) {
+		for (int col = 0; col < stateDim.second; ++col) {
+			m_heatMap[row][col] = 0;
 		}
 	}
 }

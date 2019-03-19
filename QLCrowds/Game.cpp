@@ -148,6 +148,26 @@ void Game::processEvents()
 			m_quit = true;
 		if (m_event.type == SDL_WINDOWEVENT && m_event.window.event == SDL_WINDOWEVENT_CLOSE && m_event.window.windowID == SDL_GetWindowID(m_window))
 			m_quit = true;
+		switch (m_event.type)
+		{
+		case SDL_MOUSEBUTTONDOWN: {
+			int x = m_event.button.x;
+			int y = m_event.button.y;
+			if (x > env.gridPosX && x < env.gridPosX + (env.cellW * env.stateDim.second)
+				&& y > env.gridPosY && y < env.gridPosY + (env.cellH * env.stateDim.first)) {
+				if (m_event.button.button == SDL_BUTTON_LEFT) {
+
+					env.addObstacle(y / env.cellH, x / env.cellW);
+				}
+				else if (m_event.button.button == SDL_BUTTON_RIGHT) {
+					env.addGoal(y / env.cellH, x / env.cellW);
+				}
+			}
+			break;
+		}
+		default:
+			break;
+		}
 	}
 }
 
@@ -179,6 +199,7 @@ void Game::runAlgorithm()
 			float reward_episode = 0;
 			auto state = env.reset();
 			std::vector<EpisodeVals> episodeData;
+			env.clearHeatMap();
 			while (true) {
 				//std::cout << "Iteration : " << index << std::endl;
 				//std::cout << "%%%%%%%%%%%%%%" << std::endl;

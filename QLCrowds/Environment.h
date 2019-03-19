@@ -25,8 +25,8 @@ class Environment {
 public:
 	struct Line;
 	// Member variables
-	int xSize = 64;
-	int ySize = 64;
+	int xSize = 8;
+	int ySize = 8;
 
 	std::pair<int, int> stateDim;
 	std::pair<int, int> actionDim;
@@ -66,10 +66,14 @@ public:
 	
 	// Environment Modifications
 	void addObstacle(int row = 0, int col = 0);
+	void addGoal(int row = 0, int col = 0);
+	std::vector<std::pair<int, int>> & getGoals();
 	void resetFlags();
 	void initFlags();
+	void clearHeatMap();
 
 protected:
+	std::vector<std::pair<int, int>> m_goals;
 	struct Line {
 		int x1;
 		int x2;
