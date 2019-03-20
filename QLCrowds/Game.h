@@ -48,7 +48,9 @@ private:
 	bool m_quit;
 	SDL_Event m_event;
 	Environment env;
-	Agent * agent;
+
+	std::vector<Agent *> m_agents;
+
 	std::vector<std::vector<EpisodeVals>> m_episodes;
 	int currentEpisode = 0;
 	int currentIteration;
@@ -62,7 +64,7 @@ private:
 	bool m_simulationFinished;
 	int numEpisodes = 500;
 	int maxIterations = 100;
-	std::vector<PlottableData> plotPoints;
+	std::vector<std::vector<PlottableData>> plotPoints;
 	const char* current_item = nullptr;
 	const char* items[2] = { "Q Learning", "RBM" };
 };

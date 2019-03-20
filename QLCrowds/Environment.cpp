@@ -61,7 +61,7 @@ void Environment::buildRewards()
 /// </summary>
 /// <param name="action">The action.</param>
 /// <returns></returns>
-std::tuple<std::pair<int, int>, float, bool> Environment::step(int action)
+std::tuple<std::pair<int, int>, float, bool> Environment::step(int action, std::pair<int, int> & state)
 {
 	m_heatMap[state.first][state.second] += 1;
 	std::pair<int, int> next_state(
@@ -70,7 +70,6 @@ std::tuple<std::pair<int, int>, float, bool> Environment::step(int action)
 
 	float reward = R[state.first][state.second][action];
 	bool done = m_tileFlags[next_state.first][next_state.second] & QLCTileGoal;
-	state = next_state;
 	return std::make_tuple(next_state, reward, done);
 }
 
@@ -78,21 +77,21 @@ std::tuple<std::pair<int, int>, float, bool> Environment::step(int action)
 /// Resets this instance.
 /// </summary>
 /// <returns></returns>
-std::pair<int, int> Environment::reset()
+void Environment::reset()
 {
-	state.first = 0;
-	state.second = 0;
-	return state;
+	for (auto & state : m_states) {
+		state.first = 0;
+		state.second = 0;
+	}
 }
 
 /// <summary>
 /// Alloweds the actions.
 /// </summary>
 /// <returns></returns>
-std::vector<int> Environment::allowedActions()
+std::vector<int> Environment::allowedActions(const std::pair<int, int> & state)
 {
 	std::vector<int> allowed;
-
 	int row = state.first;
 	int col = state.second;
 

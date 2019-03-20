@@ -25,14 +25,14 @@ class Environment {
 public:
 	struct Line;
 	// Member variables
-	int xSize = 8;
-	int ySize = 8;
+	int xSize = 128;
+	int ySize = 128;
 
 	std::pair<int, int> stateDim;
 	std::pair<int, int> actionDim;
 
 	// ML related members
-	std::pair<int, int> state;
+	std::vector<std::pair<int, int>> m_states;
 	std::map<std::string, int> action_dict;
 	std::pair<int, int> actionCoords[4] = { {-1, 0}, { 0, 1}, {1, 0}, {0, -1} };
 	std::vector<std::vector<std::vector<float>>> R;
@@ -54,9 +54,9 @@ public:
 	~Environment();
 	
 	void buildRewards();
-	std::tuple<std::pair<int, int>, float, bool> step(int action);
-	std::pair<int, int> reset();
-	std::vector<int> allowedActions();
+	std::tuple<std::pair<int, int>, float, bool> step(int action, std::pair<int, int> & state);
+	void reset();
+	std::vector<int> allowedActions(const std::pair<int, int> & state);
 
 	// display functions
 	void render(SDL_Renderer & renderer);

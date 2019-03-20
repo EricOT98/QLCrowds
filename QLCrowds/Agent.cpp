@@ -28,29 +28,53 @@ int Agent::getAction(Environment & env)
 	std::mt19937 generator(rand_dev());
 	std::uniform_real_distribution<double> distr(0, 1);
 	double randVal = distr(generator);
-	if (randVal < 1 - epsilon) {
-		auto actions_allowed = env.allowedActions();
-		if (m_backTracking) {
-			// Strip away backtracking actions
-			if (actions_allowed.size() > 1) {
-				bool actionRemoved = false;
-				int actionToRemove;
-				for (auto & action : actions_allowed) {
-					std::pair<int, int> actionDir = env.actionCoords[action];
-					std::pair<int, int> nextState(env.state.first + actionDir.first, env.state.second + actionDir.second);
-					if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
-						actionToRemove = action;
-						actionRemoved = true;
-						break;
-					}
-				}
-				if (actionRemoved) {
-					actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
-				}
-			}
+	if (randVal < epsilon) {
+		auto actions_allowed = env.allowedActions(m_currentState);
+		/*if (m_backTracking) {
+		if (actions_allowed.size() > 1) {
+		bool actionRemoved = false;
+		int actionToRemove;
+		for (auto & action : actions_allowed) {
+		std::pair<int, int> actionDir = env.actionCoords[action];
+		std::pair<int, int> nextState(env.state.first + actionDir.first, env.state.second + actionDir.second);
+		if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
+		actionToRemove = action;
+		actionRemoved = true;
+		break;
 		}
-		auto & state = env.state;
-		auto actionValues = Q[state.first][state.second];
+		}
+		if (actionRemoved) {
+		actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
+		}
+		}
+		}*/
+		std::uniform_int_distribution<int>  distr(0, actions_allowed.size() - 1);
+		int index = distr(generator);
+		return actions_allowed.at(index);
+	}
+	else {
+
+		auto actions_allowed = env.allowedActions(m_currentState);
+		//if (m_backTracking) {
+		//	// Strip away backtracking actions
+		//	if (actions_allowed.size() > 1) {
+		//		bool actionRemoved = false;
+		//		int actionToRemove;
+		//		for (auto & action : actions_allowed) {
+		//			std::pair<int, int> actionDir = env.actionCoords[action];
+		//			std::pair<int, int> nextState(env.state.first + actionDir.first, env.state.second + actionDir.second);
+		//			if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
+		//				actionToRemove = action;
+		//				actionRemoved = true;
+		//				break;
+		//			}
+		//		}
+		//		if (actionRemoved) {
+		//			actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
+		//		}
+		//	}
+		//}
+		auto actionValues = Q[m_currentState.first][m_currentState.second];
 
 		std::map<int, float> qs;
 		for (int action : actions_allowed) {
@@ -71,30 +95,6 @@ int Agent::getAction(Environment & env)
 		std::uniform_int_distribution<int>  distr(0, actions_greedy.size() - 1);
 		int index = distr(generator);
 		return actions_greedy.at(index);
-	}
-	else {
-		auto actions_allowed = env.allowedActions();
-		if (m_backTracking) {
-			if (actions_allowed.size() > 1) {
-				bool actionRemoved = false;
-				int actionToRemove;
-				for (auto & action : actions_allowed) {
-					std::pair<int, int> actionDir = env.actionCoords[action];
-					std::pair<int, int> nextState(env.state.first + actionDir.first, env.state.second + actionDir.second);
-					if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
-						actionToRemove = action;
-						actionRemoved = true;
-						break;
-					}
-				}
-				if (actionRemoved) {
-					actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
-				}
-			}
-		}
-		std::uniform_int_distribution<int>  distr(0, actions_allowed.size() - 1);
-		int index = distr(generator);
-		return actions_allowed.at(index);
 	}
 }
 
@@ -119,11 +119,9 @@ void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, floa
 	auto state_next = std::get<2>(t);
 	auto reward = std::get<3>(t);
 	bool done = std::get<4>(t);
-	std::cout << "C: " << state.first << "," << state.second << " P: " << m_previousState.first << "," << m_previousState.second << std::endl;
 
 	float & sa = Q[state.first][state.second][action];
 	auto nextActions = Q[state_next.first][state_next.second];
-	m_previousState = state;
 
 	auto maxElement = *std::max_element(nextActions.begin(), nextActions.end());
 	Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - sa);
@@ -131,20 +129,19 @@ void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, floa
 
 int Agent::getActionRBMBased(Environment & env)
 {
-	auto allowedActions = env.allowedActions();
-	auto & state = env.state;
+	auto allowedActions = env.allowedActions(m_currentState);
 	auto & goals = env.getGoals();
 	std::vector<int> possibleActions;
 	std::pair<int, int> cellsfromGoal;
 	std::pair<int, int> closestGoal = goals.at(0);
-	cellsfromGoal.first = abs(goals.at(0).first - state.first);
-	cellsfromGoal.second = abs(goals.at(0).second - state.second);
+	cellsfromGoal.first = abs(goals.at(0).first - m_currentState.first);
+	cellsfromGoal.second = abs(goals.at(0).second - m_currentState.second);
 	int combinedCellDist = cellsfromGoal.first + cellsfromGoal.second;
 	for (std::pair<int, int> & goal : goals) {
-		int goalcellDist = abs(goal.first - state.first) + abs(goal.second - state.second);
+		int goalcellDist = abs(goal.first - m_currentState.first) + abs(goal.second - m_currentState.second);
 		if (goalcellDist < combinedCellDist) {
 			combinedCellDist = goalcellDist;
-			cellsfromGoal = std::make_pair(abs(goal.first - state.first),abs(goal.second - state.second));
+			cellsfromGoal = std::make_pair(abs(goal.first - m_currentState.first),abs(goal.second - m_currentState.second));
 			closestGoal = goal;
 		}
 	}
@@ -152,8 +149,8 @@ int Agent::getActionRBMBased(Environment & env)
 	for (auto & action : allowedActions) {
 		std::pair<int, int> nextState;
 		auto actionDir = env.actionCoords[action];
-		nextState.first = actionDir.first + state.first;
-		nextState.second = actionDir.second + state.second;
+		nextState.first = actionDir.first + m_currentState.first;
+		nextState.second = actionDir.second + m_currentState.second;
 		// first row, second col
 		if (env.m_heatMap[nextState.first][nextState.second] <= 2) {
 			possibleActions.push_back(action);
@@ -163,8 +160,8 @@ int Agent::getActionRBMBased(Environment & env)
 	for (auto & action : possibleActions) {
 		std::pair<int, int> nextState;
 		auto actionDir = env.actionCoords[action];
-		nextState.first = actionDir.first + state.first;
-		nextState.second = actionDir.second + state.second;
+		nextState.first = actionDir.first + m_currentState.first;
+		nextState.second = actionDir.second + m_currentState.second;
 		if (abs(closestGoal.first - nextState.first) + abs(closestGoal.second - nextState.second) > combinedCellDist) {
 			actionsToRemove.push_back(action);
 		}

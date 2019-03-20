@@ -33,8 +33,10 @@ public:
 	void reset();
 	std::default_random_engine generator;
 	Sprite m_sprite;
+	std::pair<int, int> m_currentState;
 	std::pair<int, int> m_previousState;
 	bool m_backTracking = false;
+	bool m_done = false;
 };
 
 #endif //!AGENT_H
