@@ -15,7 +15,6 @@ struct EpisodeVals {
 	int action;
 	std::pair<int, int> state;
 	std::pair<int, int> nextState;
-	float reward;
 };
 
 struct PlottableData {
@@ -50,8 +49,6 @@ private:
 	Environment env;
 
 	std::vector<Agent *> m_agents;
-
-	std::vector<std::vector<EpisodeVals>> m_episodes;
 	int currentEpisode = 0;
 	int currentIteration;
 	bool lerping = false;
@@ -67,6 +64,14 @@ private:
 	std::vector<std::vector<PlottableData>> plotPoints;
 	const char* current_item = nullptr;
 	const char* items[2] = { "Q Learning", "RBM" };
+
+	// Episode simulation Data
+	std::vector<std::vector<std::vector<EpisodeVals>>> m_episodeData;
+	std::vector<float> m_lerpPercentages;
+	std::vector<bool> m_agentDone;
+	std::vector<bool> m_agentLerping;
+	std::vector<int> m_agentIterations;
+	int m_numAgents;
 };
 
 #endif // !GAME_H

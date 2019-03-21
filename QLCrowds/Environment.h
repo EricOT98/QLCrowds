@@ -7,8 +7,7 @@
 #include <SDL.h>
 
 typedef int QLCTileFlags;
-
-/// <summary>
+ /// <summary>
 /// Flags for representing a tiles information and varying states
 /// </summary>
 enum QLCTileFlags_ {
@@ -25,8 +24,8 @@ class Environment {
 public:
 	struct Line;
 	// Member variables
-	int xSize = 128;
-	int ySize = 128;
+	int xSize = 8;
+	int ySize = 8;
 
 	std::pair<int, int> stateDim;
 	std::pair<int, int> actionDim;
