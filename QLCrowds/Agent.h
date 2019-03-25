@@ -37,6 +37,9 @@ public:
 	std::pair<int, int> m_previousState;
 	bool m_backTracking = false;
 	bool m_done = false;
+
+	void setOrientation(int action);
+	int m_angle = 0;
 };
 
 #endif //!AGENT_H

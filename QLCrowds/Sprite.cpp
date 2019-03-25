@@ -46,9 +46,9 @@ SDL_Texture * Sprite::loadTexture(std::string path, SDL_Renderer * renderer)
 	return newTexture;
 }
 
-void Sprite::render(SDL_Renderer * renderer)
+void Sprite::render(SDL_Renderer * renderer, int angle)
 {
-	SDL_RenderCopy(renderer, m_texture, NULL, &m_bounds);
+	SDL_RenderCopyEx(renderer, m_texture, NULL, &m_bounds, angle, NULL, SDL_RendererFlip::SDL_FLIP_NONE);
 }
 
 void Sprite::setBounds(int w, int h)

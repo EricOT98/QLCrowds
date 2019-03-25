@@ -239,3 +239,25 @@ void Agent::reset()
 		}
 	}
 }
+
+void Agent::setOrientation(int action)
+{
+	switch (action)
+	{
+	case 0:
+		m_angle = 90;
+		break;
+	case 1:
+		m_angle = 0;
+		break;
+	case 2:
+		m_angle = 270;
+		break;
+	case 3:
+		m_angle = 180;
+		break;
+	default:
+		m_angle = 0;
+		break;
+	}
+}

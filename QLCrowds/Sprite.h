@@ -11,7 +11,7 @@ public:
 	Sprite(const SDL_Rect rect);
 	~Sprite();
 	virtual SDL_Texture* loadTexture(std::string path, SDL_Renderer * renderer);
-	virtual void render(SDL_Renderer* renderer);
+	void render(SDL_Renderer* renderer, int angle = 0);
 	void setBounds(int w, int h);
 	void setPosition(int x, int y);
 protected:

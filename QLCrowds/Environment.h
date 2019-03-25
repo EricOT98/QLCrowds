@@ -13,7 +13,8 @@ typedef int QLCTileFlags;
 enum QLCTileFlags_ {
 	QLCTileEMPTY = 0,
 	QLCTileObstacle = 1 << 0,
-	QLCTileGoal = 1 << 1
+	QLCTileGoal = 1 << 1,
+	QLCContainsAgent = 1 << 2
 };
 
 /// <summary>

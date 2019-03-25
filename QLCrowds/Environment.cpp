@@ -64,11 +64,15 @@ void Environment::buildRewards()
 std::tuple<std::pair<int, int>, float, bool> Environment::step(int action, std::pair<int, int> & state)
 {
 	m_heatMap[state.first][state.second] += 1;
+	m_tileFlags[state.first][state.second] ^= QLCContainsAgent;
 	std::pair<int, int> next_state(
 		state.first + actionCoords[action].first,
 		state.second + actionCoords[action].second);
 
 	float reward = R[state.first][state.second][action];
+	if (m_tileFlags[next_state.first][next_state.second] |= QLCContainsAgent) {
+		reward = -1;
+	}
 	bool done = m_tileFlags[next_state.first][next_state.second] & QLCTileGoal;
 	return std::make_tuple(next_state, reward, done);
 }
@@ -165,17 +169,21 @@ void Environment::render(SDL_Renderer & renderer)
 		rect.y = gridPosY + (row * cellH) + 1;
 		for (int col = 0; col < stateDim.second; ++col) {
 			rect.x = gridPosX + (col * cellW) + 1;
-			int alpha = (m_heatMap[row][col] / (float)m_largestHeatMapVal) * 255;
-			if (alpha > 255)
-				alpha = 255;
+			SDL_Color colour = { 0,0,0, 255 };
 			if (m_tileFlags[row][col] & QLCTileGoal)
-				SDL_SetRenderDrawColor(&renderer, 0, 255, 0, 255);
+				colour = { 0, 255, 0, 255 };
 			else if (m_tileFlags[row][col] & QLCTileObstacle)
-				SDL_SetRenderDrawColor(&renderer, 0, 0, 255, 255);
-			else
-				SDL_SetRenderDrawColor(&renderer, 214, 79, 29, alpha);
+				colour = { 0, 0, 255, 255 };
+			else {
+				if (m_largestHeatMapVal != 0) {
+					Uint8 alpha = (m_heatMap[row][col] / (float)m_largestHeatMapVal) * 255;
+					if (alpha > 255)
+						alpha = 255;
+					colour = { 214, 79, 29, alpha };
+				}
+			}
+			SDL_SetRenderDrawColor(&renderer, colour.r, colour.g, colour.b, colour.a);
 			SDL_RenderFillRect(&renderer, &rect);
-			SDL_SetRenderDrawColor(&renderer, 0, 0, 0, 255);
 		}
 	}
 	SDL_SetRenderDrawColor(&renderer, 0, 0, 0, 255);

@@ -172,7 +172,7 @@ void Game::render()
 	//m_test.render(m_renderer);
 	env.render(*m_renderer);
 	for (auto agent : m_agents) {
-		agent->m_sprite.render(m_renderer);
+		agent->m_sprite.render(m_renderer, agent->m_angle);
 	}
 	SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
 	renderUI();
@@ -291,7 +291,7 @@ void Game::runAlgorithm()
 						vals.state = agent->m_currentState;
 						vals.nextState = state_next;
 						episodeData.at(currentAgent).push_back(vals);
-
+						agent->setOrientation(action);
 						agent->m_currentState = state_next;
 
 						agentVals.at(currentAgent).iter_episode += 1;
@@ -334,6 +334,7 @@ void Game::runAlgorithm()
 			std::cout << "Agent: " << std::endl;
 			agent->displayGreedyPolicy();
 		}
+		env.createHeatmapVals();
 		m_algoStarted = false;
 		m_algoFinished = true;
 	}
