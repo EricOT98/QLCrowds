@@ -4,22 +4,10 @@
 #include <SDL_image.h>
 #include "MathUtils.h"
 
-struct AgentTrainingValues {
-	AgentTrainingValues(Environment & env) : state(0, 0) {};
-	int iter_episode = 0;
-	float reward_episode = 0;
-	std::pair<int, int> state;
-};
-
 Game::Game()
 {
 	m_window = NULL;
 	m_renderer = NULL;
-
-	//if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-	//	std::cout << "SDL failed to initialize, SDL_Error: " << SDL_GetError() << std::endl;
-	//}
-	//else {
 	m_window = SDL_CreateWindow("SDL: Command Pattern", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, m_windowWidth, m_windowHeight, SDL_WINDOW_SHOWN);
 	if (!m_window) {
 		std::cout << "SDL window failed to create, SDL_Error: " << SDL_GetError() << std::endl;
@@ -32,9 +20,7 @@ Game::Game()
 		SDL_RenderSetLogicalSize(m_renderer, m_windowWidth, m_windowHeight);
 		SDL_SetRenderDrawColor(m_renderer, 255, 255, 255, 255);
 		SDL_SetRenderDrawBlendMode(m_renderer, SDL_BlendMode::SDL_BLENDMODE_BLEND);
-		//Fill the surface white
 	}
-	//}
 	if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG))
 	{
 		printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
@@ -50,7 +36,13 @@ Game::Game()
 	// Actual code init
 	env.resizeGridTo(0, 0, 640, 360);
 	//agent = new Agent(env, m_renderer);
-	for (int i = 0; i < 3; ++i) {
+
+	m_agents.clear();
+	m_agentDone.clear();
+	m_agentLerping.clear();
+	m_agentIterations.clear();
+	m_lerpPercentages.clear();
+	for (int i = 0; i < m_numAgents; ++i) {
 		m_agents.push_back(new Agent(env, m_renderer));
 		m_lerpPercentages.push_back(0);
 		m_agentDone.push_back(false);
@@ -75,40 +67,6 @@ void Game::update(float deltaTime)
 	//std::cout << "				Update" << std::endl;
 	if (m_simulationStarted) {
 		if (currentEpisode < m_episodeData.size()) {
-			//for (int i = 0; i < m_agents.size(); ++i) {
-			//	auto & agent = m_agents.at(i);
-			//	lerping = true;
-			//	auto & episode = m_episodeData.at(i).at(currentEpisode);
-			//	if (currentIteration < episode.size()) {
-			//		if (currentPercent < lerpMax)
-			//			currentPercent += lerpPercent;
-			//		else {
-			//			currentPercent = 1.0f;
-			//			lerping = false;
-			//		}
-			//		auto & data = episode.at(currentIteration);
-			//		auto & nextState = data.nextState;
-			//		auto & state = data.state;
-			//		int w = env.cellW;
-			//		int h = env.cellH;
-			//		int currentW = w * state.second;
-			//		int currentH = h * state.first;
-			//		int nextW = w * nextState.second;
-			//		int nextH = h * nextState.first;
-			//		agent->m_sprite.setPosition(mu::lerp(currentW, nextW, currentPercent), mu::lerp(currentH, nextH, currentPercent));
-			//		if (!lerping) {
-			//			currentIteration++;
-			//			//std::cout << "Iter" << std::endl;
-			//			currentPercent = 0.0f;
-			//			lerping = true;
-			//		}
-			//	}
-			//	else {
-			//		currentIteration = 0;
-			//		currentEpisode++;
-			//		//std::cout << "Episode: " << currentEpisode << std::endl;
-			//	}
-			//}
 			for (int i = 0; i < m_agents.size(); ++i) {
 				if (!m_agentDone.at(i)) {
 					auto & agent = m_agents.at(i);
@@ -136,6 +94,7 @@ void Game::update(float deltaTime)
 							//std::cout << "Iter" << std::endl;
 							m_lerpPercentages.at(i) = 0.0f;
 							m_agentLerping.at(i) = true;
+							// TODO set agent orientation here
 						}
 					}
 					else {
@@ -156,10 +115,12 @@ void Game::update(float deltaTime)
 				}
 			}
 		}
-		else {
-			std::cout << "Done" << std::endl;
-		}
 	}
+}
+
+void Game::multiThreadedUpdate(float deltaTime)
+{
+
 }
 
 void Game::render()
@@ -172,7 +133,7 @@ void Game::render()
 	//m_test.render(m_renderer);
 	env.render(*m_renderer);
 	for (auto agent : m_agents) {
-		agent->m_sprite.render(m_renderer, agent->m_angle);
+		agent->render(*m_renderer);
 	}
 	SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
 	renderUI();
@@ -182,7 +143,7 @@ void Game::render()
 void Game::run()
 {
 	float timeSinceLastUpdate = 0.f;
-	float timePerFrame = 1.f / 60.f; // 60 fps in ms
+	float timePerFrame = 1.f / 60; // 60 fps in ms
 	float currentTime = SDL_GetTicks() / 1000.0f;
 	while (!m_quit)
 	{
@@ -242,18 +203,27 @@ void Game::saveEpisode()
 void Game::runAlgorithm()
 {
 	if (!m_algoStarted) {
-		plotPoints.clear();
-		plotPoints.resize(m_agents.size());
-		if (ImGui::Begin("Configuration")) {
-			if (ImGui::GetID("Simulation")) {
-				static bool disabled = false;
-				ImGui::Selectable("Simulation", disabled);
-			}
-			ImGui::End();
+		float currentTime = SDL_GetTicks() / 1000.0f;
+		float timeDif = 0;
+		m_agents.clear();
+		m_agentDone.clear();
+		m_agentLerping.clear();
+		m_agentIterations.clear();
+		m_lerpPercentages.clear();
+		for (int i = 0; i < m_numAgents; ++i) {
+			m_agents.push_back(new Agent(env, m_renderer));
+			m_lerpPercentages.push_back(0);
+			m_agentDone.push_back(false);
+			m_agentLerping.push_back(false);
+			m_agentIterations.push_back(0);
 		}
+
+		plotPoints.clear();
+
 		resetAlgorithm();
 		m_algoStarted = true;
 		m_episodeData.clear();
+
 		for (int i = 0; i < numEpisodes; ++i) {
 			std::cout << "=================================================" << std::endl;
 			std::vector<std::vector<EpisodeVals>> episodeData;
@@ -265,51 +235,56 @@ void Game::runAlgorithm()
 				agent->m_currentState = std::pair<int, int>(0, 0);
 				agentVals.push_back(AgentTrainingValues(env));
 			}
-
+			if (m_multiThreaded) {
+				m_threads.clear();
+				m_threads.resize(m_numAgents);
+				for (int i = 0; i < m_agents.size(); ++i) {
+					m_threads.push_back(agentSim(m_agents.at(i), &agentVals, i));
+				}
+			}
 			while (true) {
-				//std::cout << "Iteration : " << index << std::endl;
-				//std::cout << "%%%%%%%%%%%%%%" << std::endl;
-				int currentAgent = 0;
-				for (auto agent : m_agents) {
-					if (!agent->m_done) {
-						int action;
-						if (current_item == "Q Learning") {
-							action = agent->getAction(env);
+				if (!m_multiThreaded) {
+					/*std::cout << "Iteration : " << index << std::endl;
+					std::cout << "%%%%%%%%%%%%%%" << std::endl;*/
+					int currentAgent = 0;
+					for (auto agent : m_agents) {
+						if (!agent->m_done) {
+							int action;
+							if (current_item == "Q Learning") {
+								action = agent->getAction(env);
+							}
+							else {
+								action = agent->getActionRBMBased(env);
+							}
+							auto state_vals = env.step(action, agent->m_currentState);
+							auto state_next = std::get<0>(state_vals);
+							auto reward = std::get<1>(state_vals);
+							bool done = std::get<2>(state_vals);
+							agent->m_previousState = agent->m_currentState;
+							agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
+						/*	EpisodeVals vals;
+							vals.action = action;
+							vals.state = agent->m_currentState;
+							vals.nextState = state_next;
+							episodeData.at(currentAgent).push_back(vals);*/
+							agent->setOrientation(action);
+							agent->m_currentState = state_next;
+							agentVals.at(currentAgent).iter_episode += 1;
+							agentVals.at(currentAgent).reward_episode += reward;
+							agentVals.at(currentAgent).state = state_next;
+							if (agentVals.at(currentAgent).iter_episode >= maxIterations || done)
+								agent->m_done = true;
 						}
-						else {
-							action = agent->getActionRBMBased(env);
-						}
-						auto state_vals = env.step(action, agent->m_currentState);
-						auto state_next = std::get<0>(state_vals);
-						auto reward = std::get<1>(state_vals);
-						bool done = std::get<2>(state_vals);
-
-						agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
-
-						EpisodeVals vals;
-						vals.action = action;
-						vals.state = agent->m_currentState;
-						vals.nextState = state_next;
-						episodeData.at(currentAgent).push_back(vals);
-						agent->setOrientation(action);
-						agent->m_currentState = state_next;
-
-						agentVals.at(currentAgent).iter_episode += 1;
-						agentVals.at(currentAgent).reward_episode += reward;
-						agentVals.at(currentAgent).state = state_next;
-						if (agentVals.at(currentAgent).iter_episode >= maxIterations || done)
-							agent->m_done = true;
+						currentAgent++;
 					}
-					currentAgent++;
 				}
 
 				// Only finish when all agents are finished
 				auto pred = [](const Agent *a) {
 					return !a->m_done;
 				};
-				if (!(std::find_if(m_agents.begin(), m_agents.end(), pred) != m_agents.end())) {
+				if (!(std::find_if(m_agents.begin(), m_agents.end(), pred) != m_agents.end()))
 					break;
-				}
 			}
 			for (auto agent : m_agents) {
 				agent->epsilon = std::fmax(agent->epsilon * agent->epsilonDecay, 0.01);
@@ -320,13 +295,17 @@ void Game::runAlgorithm()
 				std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << std::endl;
 				currentAgent++;
 			}
-			for (int i = 0; i < m_agents.size(); ++i) {
+			/*for (int i = 0; i < m_agents.size(); ++i) {
 				PlottableData p;
 				p.episodeNumber = i;
 				p.rewardvalue = agentVals.at(i).reward_episode;
 				plotPoints.at(i).push_back(p);
+			}*/
+			//m_episodeData.push_back(episodeData);
+			for (auto & thread : m_threads) {
+				if (thread.joinable())
+					thread.join();
 			}
-			m_episodeData.push_back(episodeData);
 		}
 
 		// Display the final policy
@@ -337,6 +316,8 @@ void Game::runAlgorithm()
 		env.createHeatmapVals();
 		m_algoStarted = false;
 		m_algoFinished = true;
+		timeDif = (SDL_GetTicks() / 1000) - currentTime;
+		std::cout << "TD : " << timeDif << std::endl;
 	}
 }
 
@@ -376,6 +357,8 @@ void Game::renderUI()
 	ImGui::SetNextWindowPos(ImVec2(1, (m_windowHeight / 2) + 1));
 	ImGui::SetNextWindowSize(ImVec2(((m_windowWidth / 5) * 4) - 1, (m_windowHeight / 2) - 1));
 	if (ImGui::Begin("Configuration", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
+		if (ImGui::DragInt("Num Agents", &m_numAgents, 1, 1, 100)) {
+		}
 		if (ImGui::Button("Simulation")) {
 			runAlgorithm();
 			startSimulation();
@@ -419,4 +402,51 @@ void Game::renderUI()
 	ImGui::EndFrame();
 	ImGui::Render();
 	ImGuiSDL::Render(ImGui::GetDrawData());
+}
+
+void Game::runRuleBased()
+{
+}
+
+void Game::runQLearning()
+{
+}
+
+void Game::runMARLQ()
+{
+}
+
+std::thread Game::agentSim(Agent * agent, std::vector<AgentTrainingValues> * agentVals, int currentAgent)
+{
+	return std::thread([=] {
+		while (!agent->m_done) {
+			int action;
+			if (current_item == "Q Learning") {
+				action = agent->getAction(env);
+			}
+			else {
+				action = agent->getActionRBMBased(env);
+			}
+			auto state_vals = env.step(action, agent->m_currentState);
+			auto state_next = std::get<0>(state_vals);
+			auto reward = std::get<1>(state_vals);
+			bool done = std::get<2>(state_vals);
+			agent->m_previousState = agent->m_currentState;
+			agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
+
+			/*	EpisodeVals vals;
+			vals.action = action;
+			vals.state = agent->m_currentState;
+			vals.nextState = state_next;
+			episodeData.at(currentAgent).push_back(vals);*/
+			agent->setOrientation(action);
+			agent->m_currentState = state_next;
+
+			agentVals->at(currentAgent).iter_episode += 1;
+			agentVals->at(currentAgent).reward_episode += reward;
+			agentVals->at(currentAgent).state = state_next;
+			if (agentVals->at(currentAgent).iter_episode >= maxIterations || done)
+				agent->m_done = true;
+		}
+	});
 }

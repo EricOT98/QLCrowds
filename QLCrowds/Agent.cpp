@@ -16,6 +16,7 @@ Agent::Agent(Environment &env, SDL_Renderer * renderer)
 	reset();
 	m_sprite.loadTexture("Assets/agent.png", renderer);
 	m_sprite.setBounds(env.cellW, env.cellH);
+	m_backTracking = true;
 }
 
 Agent::~Agent()
@@ -30,24 +31,24 @@ int Agent::getAction(Environment & env)
 	double randVal = distr(generator);
 	if (randVal < epsilon) {
 		auto actions_allowed = env.allowedActions(m_currentState);
-		/*if (m_backTracking) {
-		if (actions_allowed.size() > 1) {
-		bool actionRemoved = false;
-		int actionToRemove;
-		for (auto & action : actions_allowed) {
-		std::pair<int, int> actionDir = env.actionCoords[action];
-		std::pair<int, int> nextState(env.state.first + actionDir.first, env.state.second + actionDir.second);
-		if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
-		actionToRemove = action;
-		actionRemoved = true;
-		break;
+		if (m_backTracking) {
+			if (actions_allowed.size() > 1) {
+				bool actionRemoved = false;
+				int actionToRemove;
+				for (auto & action : actions_allowed) {
+					std::pair<int, int> actionDir = env.actionCoords[action];
+					std::pair<int, int> nextState(m_currentState.first + actionDir.first, m_currentState.second + actionDir.second);
+					if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
+						actionToRemove = action;
+						actionRemoved = true;
+						break;
+					}
+				}
+				if (actionRemoved) {
+					actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
+				}
+			}
 		}
-		}
-		if (actionRemoved) {
-		actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
-		}
-		}
-		}*/
 		std::uniform_int_distribution<int>  distr(0, actions_allowed.size() - 1);
 		int index = distr(generator);
 		return actions_allowed.at(index);
@@ -55,25 +56,25 @@ int Agent::getAction(Environment & env)
 	else {
 
 		auto actions_allowed = env.allowedActions(m_currentState);
-		//if (m_backTracking) {
-		//	// Strip away backtracking actions
-		//	if (actions_allowed.size() > 1) {
-		//		bool actionRemoved = false;
-		//		int actionToRemove;
-		//		for (auto & action : actions_allowed) {
-		//			std::pair<int, int> actionDir = env.actionCoords[action];
-		//			std::pair<int, int> nextState(env.state.first + actionDir.first, env.state.second + actionDir.second);
-		//			if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
-		//				actionToRemove = action;
-		//				actionRemoved = true;
-		//				break;
-		//			}
-		//		}
-		//		if (actionRemoved) {
-		//			actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
-		//		}
-		//	}
-		//}
+		if (m_backTracking) {
+			// Strip away backtracking actions
+			if (actions_allowed.size() > 1) {
+				bool actionRemoved = false;
+				int actionToRemove;
+				for (auto & action : actions_allowed) {
+					std::pair<int, int> actionDir = env.actionCoords[action];
+					std::pair<int, int> nextState(m_currentState.first + actionDir.first, m_currentState.second + actionDir.second);
+					if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
+						actionToRemove = action;
+						actionRemoved = true;
+						break;
+					}
+				}
+				if (actionRemoved) {
+					actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
+				}
+			}
+		}
 		auto actionValues = Q[m_currentState.first][m_currentState.second];
 
 		std::map<int, float> qs;
@@ -131,7 +132,6 @@ int Agent::getActionRBMBased(Environment & env)
 {
 	auto allowedActions = env.allowedActions(m_currentState);
 	auto & goals = env.getGoals();
-	std::vector<int> possibleActions;
 	std::pair<int, int> cellsfromGoal;
 	std::pair<int, int> closestGoal = goals.at(0);
 	cellsfromGoal.first = abs(goals.at(0).first - m_currentState.first);
@@ -145,19 +145,8 @@ int Agent::getActionRBMBased(Environment & env)
 			closestGoal = goal;
 		}
 	}
-	int actionSize = allowedActions.size();
-	for (auto & action : allowedActions) {
-		std::pair<int, int> nextState;
-		auto actionDir = env.actionCoords[action];
-		nextState.first = actionDir.first + m_currentState.first;
-		nextState.second = actionDir.second + m_currentState.second;
-		// first row, second col
-		if (env.m_heatMap[nextState.first][nextState.second] <= 2) {
-			possibleActions.push_back(action);
-		}
-	}
 	std::vector<int> actionsToRemove;
-	for (auto & action : possibleActions) {
+	for (auto & action : allowedActions) {
 		std::pair<int, int> nextState;
 		auto actionDir = env.actionCoords[action];
 		nextState.first = actionDir.first + m_currentState.first;
@@ -166,27 +155,19 @@ int Agent::getActionRBMBased(Environment & env)
 			actionsToRemove.push_back(action);
 		}
 	}
-	if (actionsToRemove.size() != possibleActions.size()) {
+	if (actionsToRemove.size() != allowedActions.size()) {
 		for (auto & action : actionsToRemove) {
-			possibleActions.erase(std::remove(possibleActions.begin(), possibleActions.end(), action), possibleActions.end());
+			allowedActions.erase(std::remove(allowedActions.begin(), allowedActions.end(), action), allowedActions.end());
 		}
 	}
 
 	std::random_device rand_dev;
 	std::mt19937 generator(rand_dev());
-	int index;
+	
 	std::uniform_int_distribution<int>  distr;
-	if (!possibleActions.empty()) {
-		distr = std::uniform_int_distribution<int>(0, possibleActions.size() - 1);
-	}
-	else {
-		distr = std::uniform_int_distribution<int>(0, allowedActions.size() - 1);
-	}
-	index = distr(generator);
-	if (!possibleActions.empty())
-		return possibleActions.at(index);
-	else
-		return allowedActions.at(index);
+	distr = std::uniform_int_distribution<int>(0, allowedActions.size() - 1);
+	int index = distr(generator);
+	return allowedActions.at(index);
 
 	//// Get the allowed actions
 	//std::vector<int> allowedActions = env.allowedActions();
@@ -260,4 +241,9 @@ void Agent::setOrientation(int action)
 		m_angle = 0;
 		break;
 	}
+}
+
+void Agent::render(SDL_Renderer & renderer)
+{
+	m_sprite.render(&renderer, m_angle);
 }

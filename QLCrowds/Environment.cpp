@@ -24,7 +24,6 @@ Environment::Environment()
 	initFlags();
 	buildRewards();
 	generateGridLines();
-	m_tileFlags[1][0] |= QLCTileObstacle;
 }
 
 /// <summary>
@@ -51,9 +50,6 @@ void Environment::buildRewards()
 			}
 		}
 	}
-
-	/*R[ySize - 2][xSize - 1][action_dict.at("down")] = rGoal;
-	R[ySize - 1][xSize - 2][action_dict.at("right")] = rGoal;*/
 }
 
 /// <summary>
@@ -70,9 +66,10 @@ std::tuple<std::pair<int, int>, float, bool> Environment::step(int action, std::
 		state.second + actionCoords[action].second);
 
 	float reward = R[state.first][state.second][action];
+	/*m_tileFlags[state.first][state.second] ^= QLCContainsAgent;
 	if (m_tileFlags[next_state.first][next_state.second] |= QLCContainsAgent) {
 		reward = -1;
-	}
+	}*/
 	bool done = m_tileFlags[next_state.first][next_state.second] & QLCTileGoal;
 	return std::make_tuple(next_state, reward, done);
 }
@@ -174,6 +171,8 @@ void Environment::render(SDL_Renderer & renderer)
 				colour = { 0, 255, 0, 255 };
 			else if (m_tileFlags[row][col] & QLCTileObstacle)
 				colour = { 0, 0, 255, 255 };
+			else if (m_tileFlags[row][col] & QLCVisited)
+				colour = { 255, 0,0, 255 };
 			else {
 				if (m_largestHeatMapVal != 0) {
 					Uint8 alpha = (m_heatMap[row][col] / (float)m_largestHeatMapVal) * 255;

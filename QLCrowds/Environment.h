@@ -14,7 +14,8 @@ enum QLCTileFlags_ {
 	QLCTileEMPTY = 0,
 	QLCTileObstacle = 1 << 0,
 	QLCTileGoal = 1 << 1,
-	QLCContainsAgent = 1 << 2
+	QLCContainsAgent = 1 << 2,
+	QLCVisited = 1 << 3
 };
 
 /// <summary>
@@ -25,8 +26,8 @@ class Environment {
 public:
 	struct Line;
 	// Member variables
-	int xSize = 8;
-	int ySize = 8;
+	int xSize = 64;
+	int ySize = 64;
 
 	std::pair<int, int> stateDim;
 	std::pair<int, int> actionDim;

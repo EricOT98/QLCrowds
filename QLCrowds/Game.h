@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <SDL.h>
+#include <thread>
 
 #include "Environment.h"
 #include "Agent.h"
@@ -22,12 +23,22 @@ struct PlottableData {
 	float rewardvalue;
 };
 
+
+struct AgentTrainingValues {
+	AgentTrainingValues(Environment & env) : state(0, 0) {};
+	int iter_episode = 0;
+	float reward_episode = 0;
+	std::pair<int, int> state;
+};
+
 class Game {
 public:
 	Game();
 	~Game();
+	std::thread agentSim(Agent * agent, std::vector<AgentTrainingValues> * agentVals, int currentAgent);
 
 	void update(float deltaTime);
+	void multiThreadedUpdate(float deltaTime);
 	void render();
 	void run();
 	void processEvents();
@@ -71,7 +82,13 @@ private:
 	std::vector<bool> m_agentDone;
 	std::vector<bool> m_agentLerping;
 	std::vector<int> m_agentIterations;
-	int m_numAgents;
+	int m_numAgents = 1;
+
+	void runRuleBased();
+	void runQLearning();
+	void runMARLQ();
+	std::vector<std::thread> m_threads;
+	bool m_multiThreaded = false;
 };
 
 #endif // !GAME_H

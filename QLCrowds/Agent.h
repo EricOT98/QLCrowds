@@ -8,6 +8,7 @@
 
 #include "Environment.h"
 #include "Sprite.h"
+#include <SDL_render.h>
 
 class Agent {
 public:
@@ -22,23 +23,33 @@ public:
 	float beta = 0.99f;				// Learning Rate
 	float gamma = 0.99f;			//DIscount factor
 
-	std::vector<std::vector<std::vector<float>>> Q;
+	std::vector<std::vector<std::vector<float>>> Q; //Q Table for action state coupling
+	bool m_done = false;
 
-	int getAction(Environment & env);
-	void train(std::tuple<std::pair<int,int>, int, std::pair<int, int>, float, bool> t);
-
-	int getActionRBMBased(Environment & env);
-	void trainRBM(std::tuple<std::pair<int, int>, int, std::pair<int, int>, float, bool> t);
-	void displayGreedyPolicy();
-	void reset();
-	std::default_random_engine generator;
-	Sprite m_sprite;
+	// Backtracking controls
 	std::pair<int, int> m_currentState;
 	std::pair<int, int> m_previousState;
 	bool m_backTracking = false;
-	bool m_done = false;
 
+	// General functions
+	void reset();
+
+	// Action functions
+	int getAction(Environment & env);
+	int getActionRBMBased(Environment & env);
+
+	void train(std::tuple<std::pair<int,int>, int, std::pair<int, int>, float, bool> t);
+	void trainRBM(std::tuple<std::pair<int, int>, int, std::pair<int, int>, float, bool> t);
+
+	// Debug functions
+	void displayGreedyPolicy();
+	
+	// Render functions
 	void setOrientation(int action);
+	void render(SDL_Renderer & renderer);
+	Sprite m_sprite;
+private:
+	// Rendering
 	int m_angle = 0;
 };
 
