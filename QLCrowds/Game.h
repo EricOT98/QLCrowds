@@ -74,7 +74,7 @@ private:
 	int maxIterations = 100;
 	std::vector<std::vector<PlottableData>> plotPoints;
 	const char* current_item = nullptr;
-	const char* items[2] = { "Q Learning", "RBM" };
+	const char* items[3] = { "Q Learning", "RBM" , "MultiRBM"};
 
 	// Episode simulation Data
 	std::vector<std::vector<std::vector<EpisodeVals>>> m_episodeData;

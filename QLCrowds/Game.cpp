@@ -49,7 +49,8 @@ Game::Game()
 		m_agentLerping.push_back(false);
 		m_agentIterations.push_back(0);
 	}
-	current_item = items[0];
+	current_item = items[2];
+	m_numAgents = 2;
 }
 
 Game::~Game()
@@ -229,10 +230,17 @@ void Game::runAlgorithm()
 			std::vector<std::vector<EpisodeVals>> episodeData;
 			episodeData.resize(m_agents.size());
 			std::vector<AgentTrainingValues> agentVals;
-			for (auto & agent : m_agents) {
+			for (int i = 0; i < m_agents.size(); ++i) {
+				auto & agent = m_agents.at(i);
 				agent->m_done = false;
-				agent->m_previousState = std::pair<int, int>(0, 0);
-				agent->m_currentState = std::pair<int, int>(0, 0);
+				if (i == 1) {
+					agent->m_previousState = std::pair<int, int>(env.stateDim.first - 1, 0);
+					agent->m_currentState = std::pair<int, int>(env.stateDim.first - 1, 0);
+				}
+				else {
+					agent->m_previousState = std::pair<int, int>(0, 0);
+					agent->m_currentState = std::pair<int, int>(0, 0);
+				}
 				agentVals.push_back(AgentTrainingValues(env));
 			}
 			if (m_multiThreaded) {
@@ -250,23 +258,24 @@ void Game::runAlgorithm()
 					for (auto agent : m_agents) {
 						if (!agent->m_done) {
 							int action;
-							if (current_item == "Q Learning") {
+							if (current_item == "Q Learning")
 								action = agent->getAction(env);
-							}
-							else {
+							else if (current_item == "RBM")
 								action = agent->getActionRBMBased(env);
-							}
+							else if (current_item == "MultiRBM")
+								action = agent->getMultiAgentActionRBM(env, agentVals.at(currentAgent).iter_episode, maxIterations);
+
 							auto state_vals = env.step(action, agent->m_currentState);
 							auto state_next = std::get<0>(state_vals);
 							auto reward = std::get<1>(state_vals);
 							bool done = std::get<2>(state_vals);
 							agent->m_previousState = agent->m_currentState;
 							agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
-						/*	EpisodeVals vals;
+							EpisodeVals vals;
 							vals.action = action;
 							vals.state = agent->m_currentState;
 							vals.nextState = state_next;
-							episodeData.at(currentAgent).push_back(vals);*/
+							episodeData.at(currentAgent).push_back(vals);
 							agent->setOrientation(action);
 							agent->m_currentState = state_next;
 							agentVals.at(currentAgent).iter_episode += 1;
@@ -295,24 +304,27 @@ void Game::runAlgorithm()
 				std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << std::endl;
 				currentAgent++;
 			}
-			/*for (int i = 0; i < m_agents.size(); ++i) {
-				PlottableData p;
-				p.episodeNumber = i;
-				p.rewardvalue = agentVals.at(i).reward_episode;
-				plotPoints.at(i).push_back(p);
-			}*/
-			//m_episodeData.push_back(episodeData);
+			if (!m_multiThreaded) {
+				//for (int i = 0; i < m_agents.size(); ++i) {
+				//PlottableData p;
+				//p.episodeNumber = i;
+				//p.rewardvalue = agentVals.at(i).reward_episode;
+				//plotPoints.at(i).push_back(p);
+				//}
+				m_episodeData.push_back(episodeData);
+
+			}
 			for (auto & thread : m_threads) {
 				if (thread.joinable())
 					thread.join();
 			}
 		}
 
-		// Display the final policy
-		for (auto agent : m_agents) {
-			std::cout << "Agent: " << std::endl;
-			agent->displayGreedyPolicy();
-		}
+		//// Display the final policy
+		//for (auto agent : m_agents) {
+		//	std::cout << "Agent: " << std::endl;
+		//	agent->displayGreedyPolicy();
+		//}
 		env.createHeatmapVals();
 		m_algoStarted = false;
 		m_algoFinished = true;
@@ -352,20 +364,30 @@ void Game::resetAlgorithm()
 
 void Game::renderUI()
 {
-	ImGui::ShowDemoWindow();
 	bool open = true;
-	ImGui::SetNextWindowPos(ImVec2(1, (m_windowHeight / 2) + 1));
-	ImGui::SetNextWindowSize(ImVec2(((m_windowWidth / 5) * 4) - 1, (m_windowHeight / 2) - 1));
+	ImGui::SetNextWindowPos(ImVec2(1, m_windowHeight / 2));
+	ImGui::SetNextWindowSize(ImVec2(((m_windowWidth / 5) * 4), (m_windowHeight / 2)));
 	if (ImGui::Begin("Configuration", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
-		if (ImGui::DragInt("Num Agents", &m_numAgents, 1, 1, 100)) {
-		}
-		if (ImGui::Button("Simulation")) {
-			runAlgorithm();
-			startSimulation();
+		ImGui::DragInt("Num Agents", &m_numAgents, 1, 1, 100);
+		ImGui::DragInt("Xsize", &env.xSize, 1, 1, 100);
+		ImGui::DragInt("Ysize", &env.ySize, 1, 1, 100);
+		if (ImGui::Button("Generate Env")) {
+			env.init(env.xSize, env.ySize);
+			for (auto & agent : m_agents) {
+				agent->m_sprite.setBounds(env.cellW, env.cellH);
+			}
 		}
 		ImGui::InputInt("Num Episodes: ", &numEpisodes, 1, 100, ImGuiWindowFlags_NoMove);
 		ImGui::InputInt("Num Iterations: ", &maxIterations, 1, 100, ImGuiWindowFlags_NoMove);
 		ImGui::InputFloat("Lerp Percent", &lerpPercent, 0.01f, 0.1f, 3, ImGuiWindowFlags_NoMove);
+		ImGui::Checkbox("Multithreaded", &m_multiThreaded);
+		if (ImGui::Button("Simulation")) {
+			for (auto & agent : m_agents) {
+				agent->m_sprite.setBounds(env.cellW, env.cellH);
+			}
+			runAlgorithm();
+			startSimulation();
+		}
 		if (!plotPoints.empty()) {
 			int stride = sizeof(struct PlottableData);
 			std::string temp = "Average Reward Value";

@@ -7,23 +7,14 @@
 /// </summary>
 Environment::Environment()
 {
-	stateDim = std::make_pair(ySize, xSize);
-	actionDim = std::make_pair(4, 0);
 
 	action_dict.insert(std::make_pair<std::string, int>("up", 0));
 	action_dict.insert(std::make_pair<std::string, int>("right", 1));
 	action_dict.insert(std::make_pair<std::string, int>("down", 2));
 	action_dict.insert(std::make_pair<std::string, int>("left", 3));
-	m_heatMap.resize(stateDim.first);
-	for (int row = 0; row < stateDim.first; ++row) {
-		m_heatMap.at(row).resize(stateDim.second);
-		for (int col = 0; col < stateDim.second; ++col) {
-			m_heatMap[row][col] = 0;
-		}
-	}
-	initFlags();
-	buildRewards();
-	generateGridLines();
+	width = 640;
+	height = 360;
+	init(xSize, ySize);
 }
 
 /// <summary>
@@ -66,11 +57,17 @@ std::tuple<std::pair<int, int>, float, bool> Environment::step(int action, std::
 		state.second + actionCoords[action].second);
 
 	float reward = R[state.first][state.second][action];
-	/*m_tileFlags[state.first][state.second] ^= QLCContainsAgent;
-	if (m_tileFlags[next_state.first][next_state.second] |= QLCContainsAgent) {
-		reward = -1;
-	}*/
 	bool done = m_tileFlags[next_state.first][next_state.second] & QLCTileGoal;
+	if (!done) {
+		m_tileFlags[state.first][state.second] ^= QLCContainsAgent;
+		if (m_tileFlags[next_state.first][next_state.second] & QLCContainsAgent) {
+			reward = -1;
+		}
+		else {
+			m_tileFlags[next_state.first][next_state.second] |= QLCContainsAgent;
+		}
+	}
+
 	return std::make_tuple(next_state, reward, done);
 }
 
@@ -120,11 +117,37 @@ std::vector<int> Environment::allowedActions(const std::pair<int, int> & state)
 	return allowed;
 }
 
+std::pair<int, int>Environment::getClosestAgent(const std::pair<int, int>& state)
+{
+	std::pair<int, int> closestAgentState;
+
+	// Iterate over all spaces if it contains an agent compare distance
+	for (int row = 0; row < stateDim.first; ++row) {
+		for (int col = 0; col < stateDim.second; ++col) {
+			if (row != state.first && col != state.second) {
+				if (m_tileFlags[row][col] & QLCContainsAgent) {
+					if (closestAgentState.first && closestAgentState.second) {
+						int combinedCellDist = std::abs(col - state.second) + std::abs(row - state.first);
+						if (combinedCellDist < std::abs(closestAgentState.second - state.second) + std::abs(closestAgentState.first - state.first))
+							closestAgentState = std::make_pair(row, col);
+					}
+					else
+						closestAgentState = std::make_pair(row, col);
+				}
+			}
+		}
+	}
+	auto allowed_actions = allowedActions(state);
+	return closestAgentState;
+}
+
 /// <summary>
 /// Generates the grid lines.
 /// </summary>
 void Environment::generateGridLines()
 {
+	cellW = width / stateDim.second;
+	cellH = height / stateDim.first;
 	gridLines.clear();
 	int endPosX = gridPosX + (stateDim.second * cellW);
 	for (int row = 0; row < stateDim.first + 1; ++row) {
@@ -154,6 +177,8 @@ void Environment::generateGridLines()
 /// <param name="renderer">The renderer.</param>
 void Environment::render(SDL_Renderer & renderer)
 {
+	SDL_SetRenderDrawColor(&renderer, 0, 255, 0, 255);
+	SDL_RenderDrawLine(&renderer, 640, 0, 640, 1280);
 	SDL_SetRenderDrawColor(&renderer, 255, 0, 0, 255);
 	for (auto & line : gridLines) {
 		SDL_RenderDrawLine(&renderer, line.x1, line.y1, line.x2, line.y2);
@@ -300,4 +325,21 @@ void Environment::clearHeatMap()
 			m_heatMap[row][col] = 0;
 		}
 	}
+}
+
+void Environment::init(int x, int y)
+{
+	stateDim = std::make_pair(y, x);
+	actionDim = std::make_pair(4, 0);
+	m_heatMap.clear();
+	m_heatMap.resize(stateDim.first);
+	for (int row = 0; row < stateDim.first; ++row) {
+		m_heatMap.at(row).resize(stateDim.second);
+		for (int col = 0; col < stateDim.second; ++col) {
+			m_heatMap[row][col] = 0;
+		}
+	}
+	initFlags();
+	buildRewards();
+	generateGridLines();
 }

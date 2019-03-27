@@ -26,8 +26,10 @@ class Environment {
 public:
 	struct Line;
 	// Member variables
-	int xSize = 64;
-	int ySize = 64;
+	int xSize = 8;
+	int ySize = 8;
+	int width = 0;
+	int height = 0;
 
 	std::pair<int, int> stateDim;
 	std::pair<int, int> actionDim;
@@ -40,7 +42,6 @@ public:
 
 	// Tile Info
 	std::vector<std::vector<int>> m_tileFlags;
-
 	// Display member vars
 	int gridPosX = 0;
 	int gridPosY = 0;
@@ -58,6 +59,7 @@ public:
 	std::tuple<std::pair<int, int>, float, bool> step(int action, std::pair<int, int> & state);
 	void reset();
 	std::vector<int> allowedActions(const std::pair<int, int> & state);
+	std::pair<int, int> getClosestAgent(const std::pair<int, int> & state);
 
 	// display functions
 	void render(SDL_Renderer & renderer);
@@ -72,7 +74,7 @@ public:
 	void resetFlags();
 	void initFlags();
 	void clearHeatMap();
-
+	void init(int x, int y);
 protected:
 	std::vector<std::pair<int, int>> m_goals;
 	struct Line {
