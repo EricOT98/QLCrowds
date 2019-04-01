@@ -1,6 +1,7 @@
 #include "Environment.h"
 #include <limits>
 #include <algorithm>
+#include <iostream>
 
 /// <summary>
 /// Initializes a new instance of the <see cref="Environment"/> class.
@@ -12,6 +13,7 @@ Environment::Environment()
 	action_dict.insert(std::make_pair<std::string, int>("right", 1));
 	action_dict.insert(std::make_pair<std::string, int>("down", 2));
 	action_dict.insert(std::make_pair<std::string, int>("left", 3));
+	action_dict.insert(std::make_pair<std::string, int>("none", 4));
 	width = 640;
 	height = 360;
 	init(xSize, ySize);
@@ -51,23 +53,15 @@ void Environment::buildRewards()
 std::tuple<std::pair<int, int>, float, bool> Environment::step(int action, std::pair<int, int> & state)
 {
 	m_heatMap[state.first][state.second] += 1;
-	m_tileFlags[state.first][state.second] ^= QLCContainsAgent;
 	std::pair<int, int> next_state(
 		state.first + actionCoords[action].first,
 		state.second + actionCoords[action].second);
 
 	float reward = R[state.first][state.second][action];
 	bool done = m_tileFlags[next_state.first][next_state.second] & QLCTileGoal;
-	if (!done) {
-		m_tileFlags[state.first][state.second] ^= QLCContainsAgent;
-		if (m_tileFlags[next_state.first][next_state.second] & QLCContainsAgent) {
-			reward = -1;
-		}
-		else {
-			m_tileFlags[next_state.first][next_state.second] |= QLCContainsAgent;
-		}
-	}
-
+	/*if (!done && m_tileFlags[next_state.first][next_state.second] & QLCContainsAgent) {
+		reward = -1.f;
+	}*/
 	return std::make_tuple(next_state, reward, done);
 }
 
@@ -113,6 +107,7 @@ std::vector<int> Environment::allowedActions(const std::pair<int, int> & state)
 		if (!(rightFlags & QLCTileObstacle))
 			allowed.push_back(action_dict["right"]);
 	}
+	allowed.push_back(action_dict["none"]);
 
 	return allowed;
 }
@@ -330,7 +325,7 @@ void Environment::clearHeatMap()
 void Environment::init(int x, int y)
 {
 	stateDim = std::make_pair(y, x);
-	actionDim = std::make_pair(4, 0);
+	actionDim = std::make_pair(5, 0);
 	m_heatMap.clear();
 	m_heatMap.resize(stateDim.first);
 	for (int row = 0; row < stateDim.first; ++row) {
@@ -342,4 +337,30 @@ void Environment::init(int x, int y)
 	initFlags();
 	buildRewards();
 	generateGridLines();
+}
+
+void Environment::setAgentFlags(std::pair<int, int> p, std::pair<int, int> c)
+{
+	auto & prev = m_tileFlags[p.first][p.second];
+	auto & curr = m_tileFlags[c.first][c.second];
+	prev = QLCTileEMPTY;
+	auto pred = [&c](std::pair<int, int> & g) {
+		return g.first == c.first && g.second == c.second;
+	};
+	if (std::find_if(m_goals.begin(), m_goals.end(), pred) == m_goals.end()) {
+		curr |= QLCContainsAgent;
+	}
+}
+
+std::vector<std::pair<int, int>> Environment::getSpawnablePoint()
+{
+	std::vector<std::pair<int, int>> statesToCheck;
+	for (int row = 0; row < stateDim.first; ++row) {
+		for (int col = 0; col < stateDim.second; ++col) {
+			auto & flags = m_tileFlags[row][col];
+			if (!(flags& QLCTileGoal || flags & QLCTileObstacle || flags & QLCContainsAgent))
+				statesToCheck.push_back(std::make_pair(row, col));
+		}
+	}
+	return statesToCheck;
 }

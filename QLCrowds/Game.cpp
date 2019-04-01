@@ -144,7 +144,7 @@ void Game::render()
 void Game::run()
 {
 	float timeSinceLastUpdate = 0.f;
-	float timePerFrame = 1.f / 60; // 60 fps in ms
+	float timePerFrame = 1.f / 1000.f; // 60 fps in ms
 	float currentTime = SDL_GetTicks() / 1000.0f;
 	while (!m_quit)
 	{
@@ -233,14 +233,10 @@ void Game::runAlgorithm()
 			for (int i = 0; i < m_agents.size(); ++i) {
 				auto & agent = m_agents.at(i);
 				agent->m_done = false;
-				if (i == 1) {
-					agent->m_previousState = std::pair<int, int>(env.stateDim.first - 1, 0);
-					agent->m_currentState = std::pair<int, int>(env.stateDim.first - 1, 0);
-				}
-				else {
-					agent->m_previousState = std::pair<int, int>(0, 0);
-					agent->m_currentState = std::pair<int, int>(0, 0);
-				}
+				auto states = env.getSpawnablePoint();
+				std::pair<int, int> state = states.at(std::rand() % states.size());
+				agent->m_previousState = state;
+				agent->m_currentState = state;
 				agentVals.push_back(AgentTrainingValues(env));
 			}
 			if (m_multiThreaded) {
@@ -268,21 +264,34 @@ void Game::runAlgorithm()
 							auto state_vals = env.step(action, agent->m_currentState);
 							auto state_next = std::get<0>(state_vals);
 							auto reward = std::get<1>(state_vals);
+							if (reward == -1) {
+								agentVals.at(currentAgent).m_numCollisions++;
+							}
 							bool done = std::get<2>(state_vals);
 							agent->m_previousState = agent->m_currentState;
 							agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
-							EpisodeVals vals;
-							vals.action = action;
-							vals.state = agent->m_currentState;
-							vals.nextState = state_next;
-							episodeData.at(currentAgent).push_back(vals);
 							agent->setOrientation(action);
 							agent->m_currentState = state_next;
+							env.setAgentFlags(agent->m_previousState, agent->m_currentState);
+
+							EpisodeVals vals;
+							vals.action = action;
+							vals.state = agent->m_previousState;
+							vals.nextState = state_next;
+							episodeData.at(currentAgent).push_back(vals);
+							
 							agentVals.at(currentAgent).iter_episode += 1;
 							agentVals.at(currentAgent).reward_episode += reward;
 							agentVals.at(currentAgent).state = state_next;
 							if (agentVals.at(currentAgent).iter_episode >= maxIterations || done)
 								agent->m_done = true;
+							/*std::cout << "================" << std::endl;
+							for (auto & row : env.m_tileFlags) {
+								for (auto & flag : row) {
+									std::cout << (flag & QLCContainsAgent) << " ";
+								}
+								std::cout << std::endl;
+							}*/
 						}
 						currentAgent++;
 					}
@@ -301,7 +310,7 @@ void Game::runAlgorithm()
 
 			int currentAgent = 0;
 			for (auto agent : m_agents) {
-				std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << std::endl;
+				std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
 				currentAgent++;
 			}
 			if (!m_multiThreaded) {
@@ -320,11 +329,11 @@ void Game::runAlgorithm()
 			}
 		}
 
-		//// Display the final policy
-		//for (auto agent : m_agents) {
-		//	std::cout << "Agent: " << std::endl;
-		//	agent->displayGreedyPolicy();
-		//}
+		// Display the final policy
+		for (auto agent : m_agents) {
+			std::cout << "Agent: " << std::endl;
+			agent->displayGreedyPolicy();
+		}
 		env.createHeatmapVals();
 		m_algoStarted = false;
 		m_algoFinished = true;
@@ -431,6 +440,10 @@ void Game::runRuleBased()
 }
 
 void Game::runQLearning()
+{
+}
+
+void Game::runGeneralQ()
 {
 }
 

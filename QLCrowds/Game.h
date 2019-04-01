@@ -29,6 +29,7 @@ struct AgentTrainingValues {
 	int iter_episode = 0;
 	float reward_episode = 0;
 	std::pair<int, int> state;
+	int m_numCollisions = 0;
 };
 
 class Game {
@@ -74,7 +75,7 @@ private:
 	int maxIterations = 100;
 	std::vector<std::vector<PlottableData>> plotPoints;
 	const char* current_item = nullptr;
-	const char* items[3] = { "Q Learning", "RBM" , "MultiRBM"};
+	const char* items[4] = { "Q Learning", "JA Q Learning", "RBM" , "MultiRBM"};
 
 	// Episode simulation Data
 	std::vector<std::vector<std::vector<EpisodeVals>>> m_episodeData;
@@ -86,6 +87,7 @@ private:
 
 	void runRuleBased();
 	void runQLearning();
+	void runGeneralQ();
 	void runMARLQ();
 	std::vector<std::thread> m_threads;
 	bool m_multiThreaded = false;

@@ -37,7 +37,7 @@ public:
 	// ML related members
 	std::vector<std::pair<int, int>> m_states;
 	std::map<std::string, int> action_dict;
-	std::pair<int, int> actionCoords[4] = { {-1, 0}, { 0, 1}, {1, 0}, {0, -1} };
+	std::pair<int, int> actionCoords[5] = { {-1, 0}, { 0, 1}, {1, 0}, {0, -1}, {0, 0} };
 	std::vector<std::vector<std::vector<float>>> R;
 
 	// Tile Info
@@ -75,6 +75,8 @@ public:
 	void initFlags();
 	void clearHeatMap();
 	void init(int x, int y);
+	void setAgentFlags(std::pair<int, int> p, std::pair<int, int> c);
+	std::vector<std::pair<int, int>> getSpawnablePoint();
 protected:
 	std::vector<std::pair<int, int>> m_goals;
 	struct Line {

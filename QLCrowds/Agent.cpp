@@ -179,7 +179,7 @@ int Agent::getMultiAgentActionRBM(Environment & env, int currentIter, const int 
 {
 	auto allowedActions = env.allowedActions(m_currentState);
 	auto & goals = env.getGoals();
-	
+
 	std::pair<int, int> cellsfromGoal;
 	std::pair<int, int> closestGoal = goals.at(0);
 	cellsfromGoal.first = abs(goals.at(0).first - m_currentState.first);
@@ -195,80 +195,77 @@ int Agent::getMultiAgentActionRBM(Environment & env, int currentIter, const int 
 	}
 
 	// If you must go to goal
-	if (combinedCellDist >= maxIters - 1 - currentIter) {
-		std::vector<int> actionsToRemove;
-		if (m_backTracking) {
-			if (allowedActions.size() > 1) {
-				bool actionRemoved = false;
-				int actionToRemove;
-				for (auto & action : allowedActions) {
-					std::pair<int, int> actionDir = env.actionCoords[action];
-					std::pair<int, int> nextState(m_currentState.first + actionDir.first, m_currentState.second + actionDir.second);
-					if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
-						actionToRemove = action;
-						actionRemoved = true;
-						break;
-					}
-				}
-				if (actionRemoved) {
-					allowedActions.erase(std::remove(allowedActions.begin(), allowedActions.end(), actionToRemove), allowedActions.end());
+	//if (combinedCellDist >= maxIters - 1 - currentIter) {
+	std::vector<int> actionsToRemove;
+	/*if (m_backTracking) {
+		if (allowedActions.size() > 1) {
+			bool actionRemoved = false;
+			int actionToRemove;
+			for (auto & action : allowedActions) {
+				std::pair<int, int> actionDir = env.actionCoords[action];
+				std::pair<int, int> nextState(m_currentState.first + actionDir.first, m_currentState.second + actionDir.second);
+				if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
+					actionToRemove = action;
+					actionRemoved = true;
+					break;
 				}
 			}
-		}
-		for (auto & action : allowedActions) {
-			std::pair<int, int> nextState;
-			auto actionDir = env.actionCoords[action];
-			nextState.first = actionDir.first + m_currentState.first;
-			nextState.second = actionDir.second + m_currentState.second;
-			if (abs(closestGoal.first - nextState.first) + abs(closestGoal.second - nextState.second) > combinedCellDist) {
-				actionsToRemove.push_back(action);
+			if (actionRemoved) {
+				allowedActions.erase(std::remove(allowedActions.begin(), allowedActions.end(), actionToRemove), allowedActions.end());
 			}
 		}
-		if (actionsToRemove.size() != allowedActions.size()) {
-			for (auto & action : actionsToRemove) {
-				allowedActions.erase(std::remove(allowedActions.begin(), allowedActions.end(), action), allowedActions.end());
-			}
+	}*/
+	for (auto & action : allowedActions) {
+		std::pair<int, int> nextState;
+		auto actionDir = env.actionCoords[action];
+		nextState.first = actionDir.first + m_currentState.first;
+		nextState.second = actionDir.second + m_currentState.second;
+		if (abs(closestGoal.first - nextState.first) + abs(closestGoal.second - nextState.second) >= combinedCellDist) {
+			actionsToRemove.push_back(action);
 		}
 	}
-	else { // If you can group
-		std::pair<int, int> closestAgentState = env.getClosestAgent(m_currentState);
-		int agentDist = abs(closestAgentState.first - m_currentState.first) + abs(closestAgentState.second - m_currentState.second);
-		std::vector<int> actionsToRemove;
-		if (m_backTracking) {
-			if (allowedActions.size() > 1) {
-				bool actionRemoved = false;
-				int actionToRemove;
-				for (auto & action : allowedActions) {
-					std::pair<int, int> actionDir = env.actionCoords[action];
-					std::pair<int, int> nextState(m_currentState.first + actionDir.first, m_currentState.second + actionDir.second);
-					if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
-						actionToRemove = action;
-						actionRemoved = true;
-						break;
-					}
-				}
-				if (actionRemoved) {
-					allowedActions.erase(std::remove(allowedActions.begin(), allowedActions.end(), actionToRemove), allowedActions.end());
-				}
-			}
+	if (actionsToRemove.size() != allowedActions.size()) {
+		for (auto & action : actionsToRemove) {
+			allowedActions.erase(std::remove(allowedActions.begin(), allowedActions.end(), action), allowedActions.end());
 		}
-		for (auto & action : allowedActions) {
-			std::pair<int, int> nextState;
-			auto actionDir = env.actionCoords[action];
-			nextState.first = actionDir.first + m_currentState.first;
-			nextState.second = actionDir.second + m_currentState.second;
-			if (abs(closestAgentState.first - nextState.first) + abs(closestAgentState.second - nextState.second) > agentDist) {
-				actionsToRemove.push_back(action);
-			}
-		}
-		if (actionsToRemove.size() != allowedActions.size()) {
-			for (auto & action : actionsToRemove) {
-				allowedActions.erase(std::remove(allowedActions.begin(), allowedActions.end(), action), allowedActions.end());
-			}
-		}
-
-
 	}
+	//}
+	//else { // If you can group
+	//	std::pair<int, int> closestAgentState = env.getClosestAgent(m_currentState);
+	//	int agentDist = abs(closestAgentState.first - m_currentState.first) + abs(closestAgentState.second - m_currentState.second);
+	//	std::vector<int> actionsToRemove;
+	//	if (m_backTracking) {
+	//		if (allowedActions.size() > 1) {
+	//			bool actionRemoved = false;
+	//			int actionToRemove;
+	//			for (auto & action : allowedActions) {
+	//				std::pair<int, int> actionDir = env.actionCoords[action];
+	//				std::pair<int, int> nextState(m_currentState.first + actionDir.first, m_currentState.second + actionDir.second);
+	//				if (nextState.first == m_previousState.first && nextState.second == m_previousState.second) {
+	//					actionToRemove = action;
+	//					actionRemoved = true;
+	//					break;
+	//				}
+	//			}
+	//			if (actionRemoved) {
+	//				allowedActions.erase(std::remove(allowedActions.begin(), allowedActions.end(), actionToRemove), allowedActions.end());
+	//			}
+	//		}
+	//	}
+	//	for (auto & action : allowedActions) {
+	//		std::pair<int, int> nextState;
+	//		auto actionDir = env.actionCoords[action];
+	//		nextState.first = actionDir.first + m_currentState.first;
+	//		nextState.second = actionDir.second + m_currentState.second;
+	//		if (abs(closestAgentState.first - nextState.first) + abs(closestAgentState.second - nextState.second) > agentDist) {
+	//			actionsToRemove.push_back(action);
+	//		}
+	//	}
+	//	if (actionsToRemove.size() != allowedActions.size()) {
+	//		for (auto & action : actionsToRemove) {
+	//			allowedActions.erase(std::remove(allowedActions.begin(), allowedActions.end(), action), allowedActions.end());
+	//		}
+	//	}
 	std::random_device rand_dev;
 	std::mt19937 generator(rand_dev());
 
@@ -284,7 +281,10 @@ void Agent::trainRBM(std::tuple<std::pair<int, int>, int, std::pair<int, int>, f
 
 void Agent::displayGreedyPolicy()
 {
-	std::vector<std::vector<float>> greedyPolicy;
+
+	std::vector<std::string> action_dict = { "u", "r", "d", "l", "n" };
+
+	std::vector<std::vector<std::string>> greedyPolicy;
 	greedyPolicy.resize(stateDim.first);
 	for (int row = 0; row < stateDim.first; ++row) {
 		std::cout << "[";
@@ -292,6 +292,15 @@ void Agent::displayGreedyPolicy()
 		for (int col = 0; col < stateDim.second; ++col) {
 			auto actions = Q[row][col];
 			greedyPolicy[row][col] = *std::max_element(actions.begin(), actions.end());
+			float best = actions.at(0);
+			int selected = 0;
+			for (int i = 1; i < actions.size(); ++i) {
+				if (actions[i] > best) {
+					best = actions[i];
+					selected = i;
+				}
+			}
+			greedyPolicy[row][col] = action_dict.at(selected);
 			std::cout << greedyPolicy[row][col] << ",";
 		}
 		std::cout << "]," << std::endl;
