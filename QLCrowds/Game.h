@@ -12,6 +12,10 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_sdl.h"
 
+// FANN
+#include <fann.h>
+#include <fann_cpp.h>
+
 struct EpisodeVals {
 	int action;
 	std::pair<int, int> state;

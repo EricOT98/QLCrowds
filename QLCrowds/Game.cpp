@@ -51,6 +51,15 @@ Game::Game()
 	}
 	current_item = items[2];
 	m_numAgents = 2;
+
+	const unsigned int numInput = env.stateDim.first * env.stateDim.second;
+	const unsigned int numOutput = 4;
+	const unsigned int numLayers = 3;
+	const unsigned int numHidden = 4;
+	const float desiredError = 0.01f;
+	const unsigned int max_epochs = 500000;
+	const unsigned int epochs_between_reports = 1000;
+
 }
 
 Game::~Game()
