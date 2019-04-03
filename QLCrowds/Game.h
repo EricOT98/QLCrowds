@@ -53,6 +53,7 @@ public:
 	void resetSimulation();
 	void resetAlgorithm();
 	void renderUI();
+	void runAlgoApproximated();
 private:
 	SDL_Window * m_window;
 	SDL_Renderer* m_renderer;

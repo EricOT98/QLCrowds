@@ -51,15 +51,7 @@ Game::Game()
 	}
 	current_item = items[2];
 	m_numAgents = 2;
-
-	const unsigned int numInput = env.stateDim.first * env.stateDim.second;
-	const unsigned int numOutput = 4;
-	const unsigned int numLayers = 3;
-	const unsigned int numHidden = 4;
-	const float desiredError = 0.01f;
-	const unsigned int max_epochs = 500000;
-	const unsigned int epochs_between_reports = 1000;
-
+	runAlgoApproximated();
 }
 
 Game::~Game()
@@ -442,6 +434,169 @@ void Game::renderUI()
 	ImGui::EndFrame();
 	ImGui::Render();
 	ImGuiSDL::Render(ImGui::GetDrawData());
+}
+
+void Game::runAlgoApproximated()
+{
+	//const unsigned int numInput = 2 + 5;
+	//const unsigned int numOutput = 5;
+	//const unsigned int numLayers = 3;
+	//const unsigned int numHidden = 5;
+	//const float desiredError = 0.01f;
+	//const unsigned int max_epochs = 1000;
+	//const unsigned int epochs_between_reports = 1000;
+	//const float learningRate = 0.7f;
+
+	//FANN::neural_net net;
+	//net.create_standard(numLayers, numInput, numHidden, numOutput);
+	//net.set_learning_rate(learningRate);
+	//net.set_activation_steepness_hidden(1.0);
+	//net.set_activation_steepness_output(1.0);
+	//net.set_activation_function_hidden(FANN::SIGMOID);
+	//net.set_activation_function_output(FANN::SIGMOID);
+	//const double randomNetMin = -0.5;
+	//const double randomNetMax = 0.5;
+	//// Output network type and parameters
+	//std::cout << "Network Type                         :  ";
+	//switch (net.get_network_type())
+	//{
+	//case FANN::LAYER:
+	//	std::cout << "LAYER" << std::endl;
+	//	break;
+	//case FANN::SHORTCUT:
+	//	std::cout << "SHORTCUT" << std::endl;
+	//	break;
+	//default:
+	//	std::cout << "UNKNOWN" << std::endl;
+	//	break;
+	//}
+	//net.print_parameters();
+
+	//std::cout << std::endl << "Training network." << std::endl;
+	//net.randomize_weights(randomNetMin, randomNetMax);
+	//std::cout << "Total neurons: " << net.get_total_neurons() << std::endl;
+	//std::vector<std::string> action_dict = { "u", "r", "d", "l", "n" };
+	//if (!m_algoStarted) {
+	//	float currentTime = SDL_GetTicks() / 1000.0f;
+	//	float timeDif = 0;
+	//	m_agents.clear();
+	//	m_agentDone.clear();
+	//	m_agentLerping.clear();
+	//	m_agentIterations.clear();
+	//	m_lerpPercentages.clear();
+	//	for (int i = 0; i < m_numAgents; ++i) {
+	//		m_agents.push_back(new Agent(env, m_renderer));
+	//		m_lerpPercentages.push_back(0);
+	//		m_agentDone.push_back(false);
+	//		m_agentLerping.push_back(false);
+	//		m_agentIterations.push_back(0);
+	//	}
+
+	//	plotPoints.clear();
+
+	//	resetAlgorithm();
+	//	m_algoStarted = true;
+	//	m_episodeData.clear();
+
+	//	for (int i = 0; i < numEpisodes; ++i) {
+	//		std::cout << "=================================================" << std::endl;
+	//		std::vector<std::vector<EpisodeVals>> episodeData;
+	//		episodeData.resize(m_agents.size());
+	//		std::vector<AgentTrainingValues> agentVals;
+	//		for (int i = 0; i < m_agents.size(); ++i) {
+	//			auto & agent = m_agents.at(i);
+	//			agent->m_done = false;
+	//			auto states = env.getSpawnablePoint();
+	//			std::pair<int, int> state = states.at(std::rand() % states.size());
+	//			agent->m_previousState = state;
+	//			agent->m_currentState = state;
+	//			agentVals.push_back(AgentTrainingValues(env));
+	//		}
+	//		if (m_multiThreaded) {
+	//			m_threads.clear();
+	//			m_threads.resize(m_numAgents);
+	//			for (int i = 0; i < m_agents.size(); ++i) {
+	//				m_threads.push_back(agentSim(m_agents.at(i), &agentVals, i));
+	//			}
+	//		}
+	//		while (true) {
+	//			if (!m_multiThreaded) {
+	//				/*std::cout << "Iteration : " << index << std::endl;
+	//				std::cout << "%%%%%%%%%%%%%%" << std::endl;*/
+	//				int currentAgent = 0;
+	//				for (auto agent : m_agents) {
+	//					if (!agent->m_done) {
+	//						float vals[7] = { agent->m_currentState.first, agent->m_currentState.second, 0,1,2,3,4 };
+	//						auto qv = net.run(&vals[0]);
+	//						float max = qv[0];
+	//						int action = 0;
+	//						for (int j = 1; j < 5; ++j) {
+	//							if (qv[j] > max) {
+	//								max = qv[j];
+	//								action = j;
+	//							}
+	//						}
+	//						auto state_vals = env.step(action, agent->m_currentState);
+	//						auto state_next = std::get<0>(state_vals);
+	//						auto reward = std::get<1>(state_vals);
+	//						if (reward == -1) {
+	//							agentVals.at(currentAgent).m_numCollisions++;
+	//						}
+	//						bool done = std::get<2>(state_vals);
+	//						agent->m_previousState = agent->m_currentState;
+	//						agent->m_currentState = state_next;
+	//						float newvals[7] = { agent->m_currentState.first, agent->m_currentState.second, 0,1,2,3,4 };
+	//						auto newq = net.run(&newvals[0]);
+	//						//net.train_epoch(&newq[0]);
+	//						env.setAgentFlags(agent->m_previousState, agent->m_currentState);
+	//						agentVals.at(currentAgent).iter_episode += 1;
+	//						agentVals.at(currentAgent).reward_episode += reward;
+	//						agentVals.at(currentAgent).state = state_next;
+	//						if (agentVals.at(currentAgent).iter_episode >= maxIterations || done)
+	//							agent->m_done = true;
+
+	//					}
+	//					currentAgent++;
+	//				}
+	//			}
+
+	//			// Only finish when all agents are finished
+	//			auto pred = [](const Agent *a) {
+	//				return !a->m_done;
+	//			};
+	//			if (!(std::find_if(m_agents.begin(), m_agents.end(), pred) != m_agents.end()))
+	//				break;
+	//		}
+	//		for (auto agent : m_agents) {
+	//			agent->epsilon = std::fmax(agent->epsilon * agent->epsilonDecay, 0.01);
+	//		}
+
+	//		int currentAgent = 0;
+	//		for (auto agent : m_agents) {
+	//			std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
+	//			currentAgent++;
+	//		}
+	//		if (!m_multiThreaded) {
+	//			m_episodeData.push_back(episodeData);
+
+	//		}
+	//		for (auto & thread : m_threads) {
+	//			if (thread.joinable())
+	//				thread.join();
+	//		}
+	//	}
+
+	//	// Display the final policy
+	//	for (auto agent : m_agents) {
+	//		std::cout << "Agent: " << std::endl;
+	//		agent->displayGreedyPolicy();
+	//	}
+	//	env.createHeatmapVals();
+	//	m_algoStarted = false;
+	//	m_algoFinished = true;
+	//	timeDif = (SDL_GetTicks() / 1000) - currentTime;
+	//	std::cout << "TD : " << timeDif << std::endl;
+	//}
 }
 
 void Game::runRuleBased()
