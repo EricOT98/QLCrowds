@@ -77,6 +77,7 @@ public:
 	void init(int x, int y);
 	void setAgentFlags(std::pair<int, int> p, std::pair<int, int> c);
 	std::vector<std::pair<int, int>> getSpawnablePoint();
+
 protected:
 	std::vector<std::pair<int, int>> m_goals;
 	struct Line {

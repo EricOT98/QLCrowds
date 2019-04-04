@@ -32,6 +32,7 @@ Game::Game()
 	ImGuiSDL::Initialize(m_renderer, m_windowWidth, m_windowHeight);
 
 	ImGui_ImplSDL2_InitForOpenGL(m_window, nullptr);
+	cherryTheme();
 
 	// Actual code init
 	env.resizeGridTo(0, 0, 640, 360);
@@ -51,7 +52,6 @@ Game::Game()
 	}
 	current_item = items[2];
 	m_numAgents = 2;
-	runAlgoApproximated();
 }
 
 Game::~Game()
@@ -408,6 +408,9 @@ void Game::renderUI()
 				);
 			}
 		}
+		if(ImGui::Button("Approximated simulation")) {
+			runAlgoApproximated();
+		}
 		// Animate a simple progress bar
 		static float progress = 0.0f, progress_dir = 1.0f;
 		//std::cout << currentEpisode << std::endl;
@@ -438,165 +441,43 @@ void Game::renderUI()
 
 void Game::runAlgoApproximated()
 {
-	//const unsigned int numInput = 2 + 5;
-	//const unsigned int numOutput = 5;
-	//const unsigned int numLayers = 3;
-	//const unsigned int numHidden = 5;
-	//const float desiredError = 0.01f;
-	//const unsigned int max_epochs = 1000;
-	//const unsigned int epochs_between_reports = 1000;
-	//const float learningRate = 0.7f;
+	using namespace tiny_dnn;
+	using namespace tiny_dnn::activation;
+	using namespace tiny_dnn::layers;
+	//network<sequential> net = make_mlp<tiny_dnn::activation::leaky_relu>({ 8 * 8, 32, 5 });
+	network<sequential> net;
+	net << layers::fc((8 * 8), 18) << activation::tanh() << layers::fc(18, 5) << activation::tanh();
 
-	//FANN::neural_net net;
-	//net.create_standard(numLayers, numInput, numHidden, numOutput);
-	//net.set_learning_rate(learningRate);
-	//net.set_activation_steepness_hidden(1.0);
-	//net.set_activation_steepness_output(1.0);
-	//net.set_activation_function_hidden(FANN::SIGMOID);
-	//net.set_activation_function_output(FANN::SIGMOID);
-	//const double randomNetMin = -0.5;
-	//const double randomNetMax = 0.5;
-	//// Output network type and parameters
-	//std::cout << "Network Type                         :  ";
-	//switch (net.get_network_type())
-	//{
-	//case FANN::LAYER:
-	//	std::cout << "LAYER" << std::endl;
-	//	break;
-	//case FANN::SHORTCUT:
-	//	std::cout << "SHORTCUT" << std::endl;
-	//	break;
-	//default:
-	//	std::cout << "UNKNOWN" << std::endl;
-	//	break;
-	//}
-	//net.print_parameters();
+	std::vector<std::string> action_dict = { "u", "r", "d", "l", "n" };
+	vec_t inputs;
+	for (int row = 0; row < env.stateDim.first; ++row) {
+		for (int col = 0; col < env.stateDim.second; ++col) {
+			//std::cout << "Row: " << row << " Col: " << col << " ";
+			int val = 2;
+			if (env.m_tileFlags[row][col] & QLCContainsAgent)
+				val = 3;
+			else if (env.m_tileFlags[row][col] & QLCTileGoal)
+				val = 10;
+			else if (env.m_tileFlags[row][col] & QLCTileObstacle)
+				val = 0;
+				//rewards[row][col][a] = (rewards[row][col][a] - (-0.1f)) / (100 - (-0.1f));
+			inputs.push_back((val - 0) / (10.f - 0));
+			//std::cout << std::endl;
+		}
+	}
+	auto test = net.predict(inputs);
+	for (int i = 0; i < 5; ++i) {
+		std::cout << action_dict[i] << ": " << test[i] << " ";
+	}
+	std::cout << std::endl;
 
-	//std::cout << std::endl << "Training network." << std::endl;
-	//net.randomize_weights(randomNetMin, randomNetMax);
-	//std::cout << "Total neurons: " << net.get_total_neurons() << std::endl;
-	//std::vector<std::string> action_dict = { "u", "r", "d", "l", "n" };
-	//if (!m_algoStarted) {
-	//	float currentTime = SDL_GetTicks() / 1000.0f;
-	//	float timeDif = 0;
-	//	m_agents.clear();
-	//	m_agentDone.clear();
-	//	m_agentLerping.clear();
-	//	m_agentIterations.clear();
-	//	m_lerpPercentages.clear();
-	//	for (int i = 0; i < m_numAgents; ++i) {
-	//		m_agents.push_back(new Agent(env, m_renderer));
-	//		m_lerpPercentages.push_back(0);
-	//		m_agentDone.push_back(false);
-	//		m_agentLerping.push_back(false);
-	//		m_agentIterations.push_back(0);
-	//	}
+	network<sequential> test_nn;
+	test_nn
+		<< fully_connected_layer(64, 18, true) << relu()
+		<< fully_connected_layer(18, 18, true) << relu()
+		<< fully_connected_layer(18, 5, true) << relu();
+	std::cout << test_nn.layer_size() << std::endl;
 
-	//	plotPoints.clear();
-
-	//	resetAlgorithm();
-	//	m_algoStarted = true;
-	//	m_episodeData.clear();
-
-	//	for (int i = 0; i < numEpisodes; ++i) {
-	//		std::cout << "=================================================" << std::endl;
-	//		std::vector<std::vector<EpisodeVals>> episodeData;
-	//		episodeData.resize(m_agents.size());
-	//		std::vector<AgentTrainingValues> agentVals;
-	//		for (int i = 0; i < m_agents.size(); ++i) {
-	//			auto & agent = m_agents.at(i);
-	//			agent->m_done = false;
-	//			auto states = env.getSpawnablePoint();
-	//			std::pair<int, int> state = states.at(std::rand() % states.size());
-	//			agent->m_previousState = state;
-	//			agent->m_currentState = state;
-	//			agentVals.push_back(AgentTrainingValues(env));
-	//		}
-	//		if (m_multiThreaded) {
-	//			m_threads.clear();
-	//			m_threads.resize(m_numAgents);
-	//			for (int i = 0; i < m_agents.size(); ++i) {
-	//				m_threads.push_back(agentSim(m_agents.at(i), &agentVals, i));
-	//			}
-	//		}
-	//		while (true) {
-	//			if (!m_multiThreaded) {
-	//				/*std::cout << "Iteration : " << index << std::endl;
-	//				std::cout << "%%%%%%%%%%%%%%" << std::endl;*/
-	//				int currentAgent = 0;
-	//				for (auto agent : m_agents) {
-	//					if (!agent->m_done) {
-	//						float vals[7] = { agent->m_currentState.first, agent->m_currentState.second, 0,1,2,3,4 };
-	//						auto qv = net.run(&vals[0]);
-	//						float max = qv[0];
-	//						int action = 0;
-	//						for (int j = 1; j < 5; ++j) {
-	//							if (qv[j] > max) {
-	//								max = qv[j];
-	//								action = j;
-	//							}
-	//						}
-	//						auto state_vals = env.step(action, agent->m_currentState);
-	//						auto state_next = std::get<0>(state_vals);
-	//						auto reward = std::get<1>(state_vals);
-	//						if (reward == -1) {
-	//							agentVals.at(currentAgent).m_numCollisions++;
-	//						}
-	//						bool done = std::get<2>(state_vals);
-	//						agent->m_previousState = agent->m_currentState;
-	//						agent->m_currentState = state_next;
-	//						float newvals[7] = { agent->m_currentState.first, agent->m_currentState.second, 0,1,2,3,4 };
-	//						auto newq = net.run(&newvals[0]);
-	//						//net.train_epoch(&newq[0]);
-	//						env.setAgentFlags(agent->m_previousState, agent->m_currentState);
-	//						agentVals.at(currentAgent).iter_episode += 1;
-	//						agentVals.at(currentAgent).reward_episode += reward;
-	//						agentVals.at(currentAgent).state = state_next;
-	//						if (agentVals.at(currentAgent).iter_episode >= maxIterations || done)
-	//							agent->m_done = true;
-
-	//					}
-	//					currentAgent++;
-	//				}
-	//			}
-
-	//			// Only finish when all agents are finished
-	//			auto pred = [](const Agent *a) {
-	//				return !a->m_done;
-	//			};
-	//			if (!(std::find_if(m_agents.begin(), m_agents.end(), pred) != m_agents.end()))
-	//				break;
-	//		}
-	//		for (auto agent : m_agents) {
-	//			agent->epsilon = std::fmax(agent->epsilon * agent->epsilonDecay, 0.01);
-	//		}
-
-	//		int currentAgent = 0;
-	//		for (auto agent : m_agents) {
-	//			std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
-	//			currentAgent++;
-	//		}
-	//		if (!m_multiThreaded) {
-	//			m_episodeData.push_back(episodeData);
-
-	//		}
-	//		for (auto & thread : m_threads) {
-	//			if (thread.joinable())
-	//				thread.join();
-	//		}
-	//	}
-
-	//	// Display the final policy
-	//	for (auto agent : m_agents) {
-	//		std::cout << "Agent: " << std::endl;
-	//		agent->displayGreedyPolicy();
-	//	}
-	//	env.createHeatmapVals();
-	//	m_algoStarted = false;
-	//	m_algoFinished = true;
-	//	timeDif = (SDL_GetTicks() / 1000) - currentTime;
-	//	std::cout << "TD : " << timeDif << std::endl;
-	//}
 }
 
 void Game::runRuleBased()
@@ -613,6 +494,79 @@ void Game::runGeneralQ()
 
 void Game::runMARLQ()
 {
+}
+
+void Game::cherryTheme()
+{
+			// cherry colors, 3 intensities
+	#define HI(v)   ImVec4(0.502f, 0.075f, 0.256f, v)
+	#define MED(v)  ImVec4(0.455f, 0.198f, 0.301f, v)
+	#define LOW(v)  ImVec4(0.232f, 0.201f, 0.271f, v)
+	// backgrounds (@todo: complete with BG_MED, BG_LOW)
+	#define BG(v)   ImVec4(0.200f, 0.220f, 0.270f, v)
+	// text
+	#define TEXT(v) ImVec4(0.860f, 0.930f, 0.890f, v)
+
+	auto &style = ImGui::GetStyle();
+	style.Colors[ImGuiCol_Text] = TEXT(0.78f);
+	style.Colors[ImGuiCol_TextDisabled] = TEXT(0.28f);
+	style.Colors[ImGuiCol_WindowBg] = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
+	style.Colors[ImGuiCol_ChildWindowBg] = BG(0.58f);
+	style.Colors[ImGuiCol_PopupBg] = BG(0.9f);
+	style.Colors[ImGuiCol_Border] = ImVec4(0.31f, 0.31f, 1.00f, 0.00f);
+	style.Colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+	style.Colors[ImGuiCol_FrameBg] = BG(1.00f);
+	style.Colors[ImGuiCol_FrameBgHovered] = MED(0.78f);
+	style.Colors[ImGuiCol_FrameBgActive] = MED(1.00f);
+	style.Colors[ImGuiCol_TitleBg] = LOW(1.00f);
+	style.Colors[ImGuiCol_TitleBgActive] = HI(1.00f);
+	style.Colors[ImGuiCol_TitleBgCollapsed] = BG(0.75f);
+	style.Colors[ImGuiCol_MenuBarBg] = BG(0.47f);
+	style.Colors[ImGuiCol_ScrollbarBg] = BG(1.00f);
+	style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.09f, 0.15f, 0.16f, 1.00f);
+	style.Colors[ImGuiCol_ScrollbarGrabHovered] = MED(0.78f);
+	style.Colors[ImGuiCol_ScrollbarGrabActive] = MED(1.00f);
+	style.Colors[ImGuiCol_CheckMark] = ImVec4(0.71f, 0.22f, 0.27f, 1.00f);
+	style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.47f, 0.77f, 0.83f, 0.14f);
+	style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.71f, 0.22f, 0.27f, 1.00f);
+	style.Colors[ImGuiCol_Button] = ImVec4(0.47f, 0.77f, 0.83f, 0.14f);
+	style.Colors[ImGuiCol_ButtonHovered] = MED(0.86f);
+	style.Colors[ImGuiCol_ButtonActive] = MED(1.00f);
+	style.Colors[ImGuiCol_Header] = MED(0.76f);
+	style.Colors[ImGuiCol_HeaderHovered] = MED(0.86f);
+	style.Colors[ImGuiCol_HeaderActive] = HI(1.00f);
+	style.Colors[ImGuiCol_Column] = ImVec4(0.14f, 0.16f, 0.19f, 1.00f);
+	style.Colors[ImGuiCol_ColumnHovered] = MED(0.78f);
+	style.Colors[ImGuiCol_ColumnActive] = MED(1.00f);
+	style.Colors[ImGuiCol_ResizeGrip] = ImVec4(0.47f, 0.77f, 0.83f, 0.04f);
+	style.Colors[ImGuiCol_ResizeGripHovered] = MED(0.78f);
+	style.Colors[ImGuiCol_ResizeGripActive] = MED(1.00f);
+	style.Colors[ImGuiCol_PlotLines] = TEXT(0.63f);
+	style.Colors[ImGuiCol_PlotLinesHovered] = MED(1.00f);
+	style.Colors[ImGuiCol_PlotHistogram] = TEXT(0.63f);
+	style.Colors[ImGuiCol_PlotHistogramHovered] = MED(1.00f);
+	style.Colors[ImGuiCol_TextSelectedBg] = MED(0.43f);
+	// [...]
+	style.Colors[ImGuiCol_ModalWindowDarkening] = BG(0.73f);
+
+	style.WindowPadding = ImVec2(6, 4);
+	style.WindowRounding = 0.0f;
+	style.FramePadding = ImVec2(5, 2);
+	style.FrameRounding = 3.0f;
+	style.ItemSpacing = ImVec2(7, 1);
+	style.ItemInnerSpacing = ImVec2(1, 1);
+	style.TouchExtraPadding = ImVec2(0, 0);
+	style.IndentSpacing = 6.0f;
+	style.ScrollbarSize = 12.0f;
+	style.ScrollbarRounding = 16.0f;
+	style.GrabMinSize = 20.0f;
+	style.GrabRounding = 2.0f;
+
+	style.WindowTitleAlign.x = 0.50f;
+
+	style.Colors[ImGuiCol_Border] = ImVec4(0.539f, 0.479f, 0.255f, 0.162f);
+	style.FrameBorderSize = 0.0f;
+	style.WindowBorderSize = 1.0f;
 }
 
 std::thread Game::agentSim(Agent * agent, std::vector<AgentTrainingValues> * agentVals, int currentAgent)

@@ -308,7 +308,7 @@ void Environment::initFlags()
 	for (int row = 0; row < stateDim.first; ++row) {
 		m_tileFlags[row].resize(stateDim.second);
 		for (int col = 0; col < stateDim.second; ++col) {
-			m_tileFlags[row][col] = QLCTileEMPTY;
+			m_tileFlags[row][col] |= QLCTileEMPTY;
 		}
 	}
 }
