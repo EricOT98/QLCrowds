@@ -2,6 +2,9 @@
 #include <random>
 #include <map>
 
+#include <algorithm>
+#include <iterator>
+
 Agent::Agent(Environment &env, SDL_Renderer * renderer)
 {
 	stateDim = std::make_pair(env.ySize, env.xSize);
@@ -125,6 +128,9 @@ void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, floa
 	auto nextActions = Q[state_next.first][state_next.second];
 
 	auto maxElement = *std::max_element(nextActions.begin(), nextActions.end());
+	if (reward == 100) {
+		std::cout << "";
+	}
 	Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - sa);
 }
 
@@ -278,6 +284,99 @@ int Agent::getMultiAgentActionRBM(Environment & env, int currentIter, const int 
 void Agent::trainRBM(std::tuple<std::pair<int, int>, int, std::pair<int, int>, float, bool> t)
 {
 }
+
+//tiny_dnn::network<tiny_dnn::sequential> Agent::buildModel()
+//{
+//	using namespace tiny_dnn;
+//	using namespace tiny_dnn::activation;
+//	using namespace tiny_dnn::layers;
+//	//network<sequential> test_nn;
+//	//// FC is equivalent of Keras dense
+//	//test_nn
+//	//	<< fully_connected_layer(64, 18, true) << activation::relu()
+//	//	<< fully_connected_layer(18, 18, true) << activation::relu()
+//	//	<< fully_connected_layer(18, 5, true) << activation::softmax();
+//	//for (auto & layer : test_nn) {
+//	//	std::cout << "Layer: " << std::endl;
+//	//	auto lw = layer->weights();
+//	//	auto & w = *lw[0];
+//	//	auto & b = *lw[1];
+//	//	std::cout << "Weights ";
+//	//	for (auto & weight : w) {
+//	//		std::cout << weight << ", ";
+//	//	}
+//	//	std::cout << std::endl;
+//
+//	//	std::cout << "Biases: ";
+//	//	for (auto & bias : b) {
+//	//		std::cout << bias << ", ";
+//	//	}
+//	//	std::cout << std::endl;
+//	//}
+//	//// Use mse for loss
+//	//// Use adam for optimser
+//	//
+//	//return test_nn;
+//}
+
+void Agent::updateTargetModel()
+{
+
+}
+
+void Agent::replayMemory(AgentMemoryBatch memory)
+{
+	m_memory.push_back(memory);
+	if (epsilon > 0.1)
+		epsilon *= epsilonDecay;
+}
+
+/// <summary>
+/// Pick random samples from within replay memeory in batch size to train the model
+/// </summary>
+/// <param name="batch"></param>
+//void Agent::trainReplay(AgentMemoryBatch batch)
+//{
+//	if (m_memory.size() < trainStart) {
+//		// No full batch preset so do nothing
+//	}
+//	else {
+//		int batchSize = std::min(batchSize, (int)m_memory.size());
+//		//auto memoryCopy = m_memory;
+//		std::random_device rd;
+//		std::mt19937 generator(rd);
+//		//std::random_shuffle(memoryCopy.begin(), memoryCopy.end());
+//		std::vector<AgentMemoryBatch> miniBatch;
+//		for (int i = 0; i < batchSize; ++i) {
+//			//miniBatch.push_back(memoryCopy.at(i));
+//		}
+//
+//		for (int i = 0; i < batchSize; ++i) {
+//			auto & currentMemory = miniBatch[i];
+//			//auto target = model.predict(currentMemory.state);
+//			if (m_done)
+//				target[currentMemory.action] = currentMemory.reward;
+//			else {
+//				//Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - sa);
+//				auto predicted = model.predict(currentMemory.nextState);
+//				//auto maxPred = getBestActions(predicted);
+//				
+//				/*target = currentBatch.reward + ((tiny_dnn::float_t)gamma * model.predict(currentBatch.nextState));*/
+//			}
+//		}
+//	}
+//}
+
+//tiny_dnn::vec_t Agent::getBestActions(tiny_dnn::vec_t actions)
+//{
+//	//auto maxElement = std::max_element(actions.begin(), actions.end());
+//	tiny_dnn::vec_t maxActions;
+//	/*for (auto & action : actions) {
+//		if (action == *maxElement)
+//			maxActions.push_back(action);
+//	}*/
+//	return maxActions;
+//}
 
 void Agent::displayGreedyPolicy()
 {

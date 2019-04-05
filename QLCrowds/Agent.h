@@ -9,9 +9,20 @@
 #include "Environment.h"
 #include "Sprite.h"
 #include <SDL_render.h>
+#include <tiny_dnn/tiny_dnn.h>
+
+typedef std::pair<int, int> State;
 
 class Agent {
 public:
+	static struct AgentMemoryBatch {
+		State state;
+		State nextState;
+		int action;
+		float reward;
+		bool done;
+	};
+
 	Agent(Environment & env, SDL_Renderer * renderer);
 	~Agent();
 
@@ -25,6 +36,7 @@ public:
 
 	std::vector<std::vector<std::vector<float>>> Q; //Q Table for action state coupling
 	bool m_done = false;
+	std::vector<AgentMemoryBatch> m_memory;
 
 	// Backtracking controls
 	std::pair<int, int> m_currentState;
@@ -42,6 +54,17 @@ public:
 
 	void train(std::tuple<std::pair<int,int>, int, std::pair<int, int>, float, bool> t);
 	void trainRBM(std::tuple<std::pair<int, int>, int, std::pair<int, int>, float, bool> t);
+	
+	// NN function approximator work
+	int trainStart = 100;
+	int batchSize = 32;
+	tiny_dnn::network<tiny_dnn::sequential> model;
+	tiny_dnn::network<tiny_dnn::sequential> targetModel;
+	/*tiny_dnn::network<tiny_dnn::sequential> buildModel();*/
+	void updateTargetModel();
+	void replayMemory(AgentMemoryBatch memory);
+	//void trainReplay(AgentMemoryBatch batch);
+	//tiny_dnn::vec_t getBestActions(tiny_dnn::vec_t actions);
 
 	// Debug functions
 	void displayGreedyPolicy();

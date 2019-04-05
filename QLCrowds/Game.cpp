@@ -471,13 +471,90 @@ void Game::runAlgoApproximated()
 	}
 	std::cout << std::endl;
 
-	network<sequential> test_nn;
-	test_nn
-		<< fully_connected_layer(64, 18, true) << relu()
-		<< fully_connected_layer(18, 18, true) << relu()
-		<< fully_connected_layer(18, 5, true) << relu();
-	std::cout << test_nn.layer_size() << std::endl;
+	
+	// use MSE for loss
 
+	adam optimizer;
+
+
+	//std::cout << test_nn.layer_size() << std::endl;
+
+	float currentTime = SDL_GetTicks() / 1000.0f;
+	float timeDif = 0;
+	m_agents.clear();
+	for (int i = 0; i < m_numAgents; ++i) {
+		m_agents.push_back(new Agent(env, m_renderer));
+	}
+
+	resetAlgorithm();
+	m_algoStarted = true;
+
+	for (int i = 0; i < numEpisodes; ++i) {
+		std::cout << "=================================================" << std::endl;
+		std::vector<std::vector<EpisodeVals>> episodeData;
+		episodeData.resize(m_agents.size());
+		std::vector<AgentTrainingValues> agentVals;
+		for (int i = 0; i < m_agents.size(); ++i) {
+			auto & agent = m_agents.at(i);
+			agent->m_done = false;
+			auto states = env.getSpawnablePoint();
+			std::pair<int, int> state = states.at(std::rand() % states.size());
+			agent->m_previousState = state;
+			agent->m_currentState = state;
+			agentVals.push_back(AgentTrainingValues(env));
+		}
+		while (true) {
+			int currentAgent = 0;
+			for (auto agent : m_agents) {
+				if (!agent->m_done) {
+					int action = agent->getAction(env);
+
+					auto state_vals = env.step(action, agent->m_currentState);
+					auto state_next = std::get<0>(state_vals);
+					auto reward = std::get<1>(state_vals);
+					bool done = std::get<2>(state_vals);
+
+					agent->m_previousState = agent->m_currentState;
+					agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
+					agent->m_currentState = state_next;
+					env.setAgentFlags(agent->m_previousState, agent->m_currentState);
+
+					EpisodeVals vals;
+					vals.action = action;
+					vals.state = agent->m_previousState;
+					vals.nextState = state_next;
+					episodeData.at(currentAgent).push_back(vals);
+
+					agentVals.at(currentAgent).iter_episode += 1;
+					agentVals.at(currentAgent).reward_episode += reward;
+					agentVals.at(currentAgent).state = state_next;
+					if (agentVals.at(currentAgent).iter_episode >= maxIterations || done)
+						agent->m_done = true;
+				}
+				currentAgent++;
+			}
+
+			// Only finish when all agents are finished
+			auto pred = [](const Agent *a) {
+				return !a->m_done;
+			};
+			if (!(std::find_if(m_agents.begin(), m_agents.end(), pred) != m_agents.end()))
+				break;
+		}
+		for (auto agent : m_agents) {
+			agent->epsilon = std::fmax(agent->epsilon * agent->epsilonDecay, 0.01);
+		}
+
+		int currentAgent = 0;
+		for (auto agent : m_agents) {
+			std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
+			currentAgent++;
+		}
+	}
+	m_algoStarted = false;
+	m_algoFinished = true;
+	timeDif = (SDL_GetTicks() / 1000) - currentTime;
+	std::cout << "TD : " << timeDif << std::endl;
 }
 
 void Game::runRuleBased()
