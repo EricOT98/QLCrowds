@@ -67,7 +67,7 @@ public:
 	//tiny_dnn::vec_t getBestActions(tiny_dnn::vec_t actions);
 
 	// Debug functions
-	void displayGreedyPolicy();
+	void displayGreedyPolicy(Environment & env);
 	
 	// Render functions
 	void setOrientation(int action);

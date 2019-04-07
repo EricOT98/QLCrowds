@@ -73,9 +73,9 @@ int Agent::getAction(Environment & env)
 						break;
 					}
 				}
-				if (actionRemoved) {
-					actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
-				}
+if (actionRemoved) {
+	actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
+}
 			}
 		}
 		auto actionValues = Q[m_currentState.first][m_currentState.second];
@@ -147,8 +147,14 @@ int Agent::getActionRBMBased(Environment & env)
 		int goalcellDist = abs(goal.first - m_currentState.first) + abs(goal.second - m_currentState.second);
 		if (goalcellDist < combinedCellDist) {
 			combinedCellDist = goalcellDist;
-			cellsfromGoal = std::make_pair(abs(goal.first - m_currentState.first),abs(goal.second - m_currentState.second));
+			cellsfromGoal = std::make_pair(abs(goal.first - m_currentState.first), abs(goal.second - m_currentState.second));
 			closestGoal = goal;
+		}
+	}
+	std::vector<std::pair<int, int>> closestGoals;
+	for (auto & goal : goals) {
+		if (abs(goal.first - m_currentState.first) + abs(goal.second - m_currentState.second) == combinedCellDist) {
+			closestGoals.push_back(goal);
 		}
 	}
 	std::vector<int> actionsToRemove;
@@ -157,7 +163,12 @@ int Agent::getActionRBMBased(Environment & env)
 		auto actionDir = env.actionCoords[action];
 		nextState.first = actionDir.first + m_currentState.first;
 		nextState.second = actionDir.second + m_currentState.second;
-		if (abs(closestGoal.first - nextState.first) + abs(closestGoal.second - nextState.second) > combinedCellDist) {
+		bool progresses = false;
+		for (auto & goal : closestGoals) {
+			if (abs(goal.first - nextState.first) + abs(goal.second - nextState.second) < combinedCellDist)
+				progresses = true;
+		}
+		if (!progresses) {
 			actionsToRemove.push_back(action);
 		}
 	}
@@ -169,10 +180,13 @@ int Agent::getActionRBMBased(Environment & env)
 
 	std::random_device rand_dev;
 	std::mt19937 generator(rand_dev());
-	
+
 	std::uniform_int_distribution<int>  distr;
 	distr = std::uniform_int_distribution<int>(0, allowedActions.size() - 1);
 	int index = distr(generator);
+	if (std::find(allowedActions.begin(), allowedActions.end(), env.action_dict["none"]) != allowedActions.end()) {
+		std::cout << "None action found" << std::endl;
+	}
 	return allowedActions.at(index);
 }
 
@@ -378,7 +392,7 @@ void Agent::replayMemory(AgentMemoryBatch memory)
 //	return maxActions;
 //}
 
-void Agent::displayGreedyPolicy()
+void Agent::displayGreedyPolicy(Environment & env)
 {
 
 	std::vector<std::string> action_dict = { "u", "r", "d", "l", "n" };
@@ -389,17 +403,25 @@ void Agent::displayGreedyPolicy()
 		std::cout << "[";
 		greedyPolicy.at(row).resize(stateDim.second);
 		for (int col = 0; col < stateDim.second; ++col) {
-			auto actions = Q[row][col];
-			greedyPolicy[row][col] = *std::max_element(actions.begin(), actions.end());
-			float best = actions.at(0);
-			int selected = 0;
-			for (int i = 1; i < actions.size(); ++i) {
-				if (actions[i] > best) {
-					best = actions[i];
-					selected = i;
-				}
+			if (env.m_tileFlags[row][col] & QLCTileGoal) {
+				greedyPolicy[row][col] = "g";
 			}
-			greedyPolicy[row][col] = action_dict.at(selected);
+			else if (env.m_tileFlags[row][col] & QLCTileObstacle) {
+				greedyPolicy[row][col] = "o";
+			}
+			else {
+				auto actions = Q[row][col];
+				greedyPolicy[row][col] = *std::max_element(actions.begin(), actions.end());
+				float best = actions.at(0);
+				int selected = 0;
+				for (int i = 1; i < actions.size(); ++i) {
+					if (actions[i] > best) {
+						best = actions[i];
+						selected = i;
+					}
+				}
+				greedyPolicy[row][col] = action_dict.at(selected);
+			}
 			std::cout << greedyPolicy[row][col] << ",";
 		}
 		std::cout << "]," << std::endl;

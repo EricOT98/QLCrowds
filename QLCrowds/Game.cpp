@@ -261,7 +261,9 @@ void Game::runAlgorithm()
 								action = agent->getActionRBMBased(env);
 							else if (current_item == "MultiRBM")
 								action = agent->getMultiAgentActionRBM(env, agentVals.at(currentAgent).iter_episode, maxIterations);
-
+							if (action == env.action_dict["none"]) {
+								std::cout << "None" << std::endl;
+							}
 							auto state_vals = env.step(action, agent->m_currentState);
 							auto state_next = std::get<0>(state_vals);
 							auto reward = std::get<1>(state_vals);
@@ -333,7 +335,7 @@ void Game::runAlgorithm()
 		// Display the final policy
 		for (auto agent : m_agents) {
 			std::cout << "Agent: " << std::endl;
-			agent->displayGreedyPolicy();
+			agent->displayGreedyPolicy(env);
 		}
 		env.createHeatmapVals();
 		m_algoStarted = false;

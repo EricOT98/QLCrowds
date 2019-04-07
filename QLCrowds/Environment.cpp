@@ -364,3 +364,31 @@ std::vector<std::pair<int, int>> Environment::getSpawnablePoint()
 	}
 	return statesToCheck;
 }
+
+std::map<std::pair<int, int>, std::vector<int>> Environment::generateOptimalPolicy()
+{
+	if (!m_goals.empty()) {
+		for (int row = 0; row < stateDim.first; ++row) {
+			for (int col = 0; col < stateDim.second; ++col) {
+				// Get manhattan distance to closest goal
+				// If a tie is present allow all actions to be considered optimal
+				if (!(m_tileFlags[row][col] & QLCTileGoal) && !(m_tileFlags[row][col] & QLCTileObstacle)) {
+					std::pair<int, int> closestGoal = m_goals.at(0);
+					int closestDist = std::abs(closestGoal.first - row) + std::abs(closestGoal.second - col);
+					for (int i = 1; i < m_goals.size(); ++i) {
+						auto & goal = m_goals.at(i);
+						int dist = std::abs(goal.first - row) + std::abs(goal.second - col);
+						if (dist < closestDist) {
+							closestDist = dist;
+							closestGoal = std::make_pair(row, col);
+						}
+					}
+				}
+				else {
+
+				}
+			}
+		}
+	}
+	return std::map<std::pair<int, int>, std::vector<int>>();
+}
