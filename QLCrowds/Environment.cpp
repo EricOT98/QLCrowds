@@ -55,8 +55,10 @@ std::tuple<std::pair<int, int>, float, bool> Environment::step(int action, std::
 		state.first + actionCoords[action].first,
 		state.second + actionCoords[action].second);
 
-	float reward = R[state.first][state.second][action];
+	auto closestagent = getClosestAgent(state);
+	float reward = R[state.first][state.second][action] - (std::abs(next_state.first - state.first) + std::abs(next_state.second - state.second));
 	bool done = m_tileFlags[next_state.first][next_state.second] & QLCTileGoal;
+	
 	/*if (!done && m_tileFlags[next_state.first][next_state.second] & QLCContainsAgent) {
 		reward = -1.f;
 	}*/

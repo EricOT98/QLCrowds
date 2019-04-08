@@ -356,9 +356,9 @@ void Game::resetAlgorithm()
 	m_algoStarted = false;
 	m_algoFinished = false;
 	env.reset();
-	/*for (auto agent : m_agents) {
+	for (auto agent : m_agents) {
 		agent->reset();
-	}*/
+	}
 }
 
 void Game::renderUI()
@@ -396,7 +396,7 @@ void Game::renderUI()
 		}
 		ImGui::InputInt("Num Episodes: ", &numEpisodes, 1, 100, ImGuiWindowFlags_NoMove);
 		ImGui::InputInt("Num Iterations: ", &maxIterations, 1, 100, ImGuiWindowFlags_NoMove);
-		ImGui::InputFloat("Lerp Percent", &lerpPercent, 0.01f, 0.1f, 3, ImGuiWindowFlags_NoMove);
+		ImGui::SliderFloat("Lerp Percent", &lerpPercent, 0, 1.f, "%.3f");
 		ImGui::Checkbox("Multithreaded", &m_multiThreaded);
 		if (ImGui::Button("Simulation")) {
 			for (auto & agent : m_agents) {

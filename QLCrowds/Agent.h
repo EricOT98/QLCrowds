@@ -31,7 +31,7 @@ public:
 
 	float epsilon = 1.f;			// Initial exploration prob
 	float epsilonDecay = 0.9999f;		//Epsilon decay after each episode
-	float beta = 0.001f;				// Learning Rate
+	float beta = 0.99f;				// Learning Rate
 	float gamma = 0.99f;			//DIscount factor
 
 	std::vector<std::vector<std::vector<float>>> Q; //Q Table for action state coupling
