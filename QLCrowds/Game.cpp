@@ -443,49 +443,12 @@ void Game::renderUI()
 
 void Game::runAlgoApproximated()
 {
-	using namespace tiny_dnn;
-	using namespace tiny_dnn::activation;
-	using namespace tiny_dnn::layers;
-	//network<sequential> net = make_mlp<tiny_dnn::activation::leaky_relu>({ 8 * 8, 32, 5 });
-	network<sequential> net;
-	net << layers::fc((8 * 8), 18) << activation::tanh() << layers::fc(18, 5) << activation::tanh();
-
-	std::vector<std::string> action_dict = { "u", "r", "d", "l", "n" };
-	vec_t inputs;
-	for (int row = 0; row < env.stateDim.first; ++row) {
-		for (int col = 0; col < env.stateDim.second; ++col) {
-			//std::cout << "Row: " << row << " Col: " << col << " ";
-			int val = 2;
-			if (env.m_tileFlags[row][col] & QLCContainsAgent)
-				val = 3;
-			else if (env.m_tileFlags[row][col] & QLCTileGoal)
-				val = 10;
-			else if (env.m_tileFlags[row][col] & QLCTileObstacle)
-				val = 0;
-				//rewards[row][col][a] = (rewards[row][col][a] - (-0.1f)) / (100 - (-0.1f));
-			inputs.push_back((val - 0) / (10.f - 0));
-			//std::cout << std::endl;
-		}
-	}
-	auto test = net.predict(inputs);
-	for (int i = 0; i < 5; ++i) {
-		std::cout << action_dict[i] << ": " << test[i] << " ";
-	}
-	std::cout << std::endl;
-
-	
-	// use MSE for loss
-
-	adam optimizer;
-
-
-	//std::cout << test_nn.layer_size() << std::endl;
-
 	float currentTime = SDL_GetTicks() / 1000.0f;
 	float timeDif = 0;
 	m_agents.clear();
 	for (int i = 0; i < m_numAgents; ++i) {
 		m_agents.push_back(new Agent(env, m_renderer));
+		m_agents.at(i)->buildModel();
 	}
 
 	resetAlgorithm();
@@ -509,15 +472,29 @@ void Game::runAlgoApproximated()
 			int currentAgent = 0;
 			for (auto agent : m_agents) {
 				if (!agent->m_done) {
+					// Chose action
 					int action = agent->getAction(env);
 
+					// Environment step returing reward, nextstate and done
 					auto state_vals = env.step(action, agent->m_currentState);
 					auto state_next = std::get<0>(state_vals);
 					auto reward = std::get<1>(state_vals);
 					bool done = std::get<2>(state_vals);
 
+					auto mem = Agent::AgentMemoryBatch();
+					mem.action = action;
+					mem.done = done;
+					mem.state = agent->m_currentState;
+					mem.nextState = state_next;
+					mem.reward = reward;
+
+					agent->replayMemory(mem);
+
+					// Train every step
+					agent->trainReplay();
+
 					agent->m_previousState = agent->m_currentState;
-					agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
+					//agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
 					agent->m_currentState = state_next;
 					env.setAgentFlags(agent->m_previousState, agent->m_currentState);
 

@@ -60,11 +60,11 @@ public:
 	int batchSize = 32;
 	tiny_dnn::network<tiny_dnn::sequential> model;
 	tiny_dnn::network<tiny_dnn::sequential> targetModel;
-	/*tiny_dnn::network<tiny_dnn::sequential> buildModel();*/
+	tiny_dnn::network<tiny_dnn::sequential> buildModel();
 	void updateTargetModel();
 	void replayMemory(AgentMemoryBatch memory);
-	//void trainReplay(AgentMemoryBatch batch);
-	//tiny_dnn::vec_t getBestActions(tiny_dnn::vec_t actions);
+	void trainReplay();
+	tiny_dnn::vec_t getBestActions(tiny_dnn::vec_t actions);
 
 	// Debug functions
 	void displayGreedyPolicy(Environment & env);
@@ -73,6 +73,7 @@ public:
 	void setOrientation(int action);
 	void render(SDL_Renderer & renderer);
 	Sprite m_sprite;
+	Environment & m_env;
 private:
 	// Rendering
 	int m_angle = 0;
