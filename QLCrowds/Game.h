@@ -54,8 +54,8 @@ public:
 private:
 	SDL_Window * m_window;
 	SDL_Renderer* m_renderer;
-	const int m_windowWidth = 1280;
-	const int m_windowHeight = 720;
+	const int m_windowWidth = 1920;
+	const int m_windowHeight = 1080;
 
 	//Loop Content
 	bool m_quit;
@@ -94,6 +94,7 @@ private:
 	std::vector<std::thread> m_threads;
 	bool m_multiThreaded = false;
 	void cherryTheme();
+	void mapUI();
 };
 
 #endif // !GAME_H

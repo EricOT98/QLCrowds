@@ -14,8 +14,6 @@ Environment::Environment()
 	action_dict.insert(std::make_pair<std::string, int>("down", 2));
 	action_dict.insert(std::make_pair<std::string, int>("left", 3));
 	action_dict.insert(std::make_pair<std::string, int>("none", 4));
-	width = 640;
-	height = 360;
 	init(xSize, ySize);
 }
 
@@ -173,7 +171,7 @@ void Environment::generateGridLines()
 void Environment::render(SDL_Renderer & renderer)
 {
 	SDL_SetRenderDrawColor(&renderer, 0, 255, 0, 255);
-	SDL_RenderDrawLine(&renderer, 640, 0, 640, 1280);
+	SDL_RenderDrawLine(&renderer, 960, 0, 960, 1080);
 	SDL_SetRenderDrawColor(&renderer, 255, 0, 0, 255);
 	for (auto & line : gridLines) {
 		SDL_RenderDrawLine(&renderer, line.x1, line.y1, line.x2, line.y2);
@@ -215,12 +213,12 @@ void Environment::render(SDL_Renderer & renderer)
 /// <param name="y">The y.</param>
 /// <param name="width">The width.</param>
 /// <param name="height">The height.</param>
-void Environment::resizeGridTo(int x, int y, int width, int height)
+void Environment::resizeGridTo(int x, int y, int w, int h)
 {
 	gridPosX = x;
 	gridPosY = y;
-	cellW = width / stateDim.second;
-	cellH = height / stateDim.first;
+	width = w;
+	height = h;
 	generateGridLines();
 }
 

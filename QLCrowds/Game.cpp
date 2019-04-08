@@ -26,6 +26,7 @@ Game::Game()
 		printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
 	}
 
+
 	// ImGui exclusive
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
@@ -35,8 +36,7 @@ Game::Game()
 	cherryTheme();
 
 	// Actual code init
-	env.resizeGridTo(0, 0, 640, 360);
-	//agent = new Agent(env, m_renderer);
+	env.resizeGridTo(0, 0, (m_windowWidth / 5) * 4 , (m_windowHeight / 5) * 4);
 
 	m_agents.clear();
 	m_agentDone.clear();
@@ -50,8 +50,8 @@ Game::Game()
 		m_agentLerping.push_back(false);
 		m_agentIterations.push_back(0);
 	}
-	current_item = items[2];
-	m_numAgents = 2;
+	// Set Imgui item selected
+	current_item = items[0];
 }
 
 Game::~Game()
@@ -129,10 +129,6 @@ void Game::render()
 {
 	SDL_RenderClear(m_renderer);
 	SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
-
-	//std::cout << "Pre: " << *r << "," << *g << "," << *b << "," << *a << std::endl;
-	//Do stuff
-	//m_test.render(m_renderer);
 	env.render(*m_renderer);
 	for (auto agent : m_agents) {
 		agent->render(*m_renderer);
@@ -176,6 +172,8 @@ void Game::processEvents()
 			m_quit = true;
 		if (m_event.type == SDL_WINDOWEVENT && m_event.window.event == SDL_WINDOWEVENT_CLOSE && m_event.window.windowID == SDL_GetWindowID(m_window))
 			m_quit = true;
+		if (m_event.type == SDL_KEYUP && m_event.key.keysym.sym == SDLK_ESCAPE)
+			m_quit = true;
 		switch (m_event.type)
 		{
 		case SDL_MOUSEBUTTONDOWN: {
@@ -207,13 +205,11 @@ void Game::runAlgorithm()
 	if (!m_algoStarted) {
 		float currentTime = SDL_GetTicks() / 1000.0f;
 		float timeDif = 0;
-		m_agents.clear();
 		m_agentDone.clear();
 		m_agentLerping.clear();
 		m_agentIterations.clear();
 		m_lerpPercentages.clear();
 		for (int i = 0; i < m_numAgents; ++i) {
-			m_agents.push_back(new Agent(env, m_renderer));
 			m_lerpPercentages.push_back(0);
 			m_agentDone.push_back(false);
 			m_agentLerping.push_back(false);
@@ -249,8 +245,6 @@ void Game::runAlgorithm()
 			}
 			while (true) {
 				if (!m_multiThreaded) {
-					/*std::cout << "Iteration : " << index << std::endl;
-					std::cout << "%%%%%%%%%%%%%%" << std::endl;*/
 					int currentAgent = 0;
 					for (auto agent : m_agents) {
 						if (!agent->m_done) {
@@ -288,13 +282,6 @@ void Game::runAlgorithm()
 							agentVals.at(currentAgent).state = state_next;
 							if (agentVals.at(currentAgent).iter_episode >= maxIterations || done)
 								agent->m_done = true;
-							/*std::cout << "================" << std::endl;
-							for (auto & row : env.m_tileFlags) {
-								for (auto & flag : row) {
-									std::cout << (flag & QLCContainsAgent) << " ";
-								}
-								std::cout << std::endl;
-							}*/
 						}
 						currentAgent++;
 					}
@@ -369,18 +356,36 @@ void Game::resetAlgorithm()
 	m_algoStarted = false;
 	m_algoFinished = false;
 	env.reset();
-	for (auto agent : m_agents) {
+	/*for (auto agent : m_agents) {
 		agent->reset();
-	}
+	}*/
 }
 
 void Game::renderUI()
 {
 	bool open = true;
-	ImGui::SetNextWindowPos(ImVec2(1, m_windowHeight / 2));
-	ImGui::SetNextWindowSize(ImVec2(((m_windowWidth / 5) * 4), (m_windowHeight / 2)));
+	// Configuration window
+	ImGui::SetNextWindowPos(ImVec2(0, (m_windowHeight / 5) * 4));
+	ImGui::SetNextWindowSize(ImVec2((m_windowWidth / 5) * 4, m_windowHeight / 5));
 	if (ImGui::Begin("Configuration", &open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
-		ImGui::DragInt("Num Agents", &m_numAgents, 1, 1, 100);
+		if (ImGui::DragInt("Num Agents", &m_numAgents, 1, 1, 100)) {
+			std::cout << "Creating agents" << std::endl;
+			if (m_numAgents > m_agents.size()) {
+				int diff = m_numAgents - m_agents.size();
+				for (int i = 0; i < diff; ++i) {
+					m_agents.push_back(new Agent(env, m_renderer));
+				}
+			}
+			else if (m_numAgents < m_agents.size()) {
+				int diff = m_agents.size() - m_numAgents;
+				for (int i = 0; i < diff; ++i) {
+					auto back = m_agents.back();
+					delete back;
+					back = nullptr;
+					m_agents.pop_back();
+				}
+			}
+		}
 		ImGui::DragInt("Xsize", &env.xSize, 1, 1, 100);
 		ImGui::DragInt("Ysize", &env.ySize, 1, 1, 100);
 		if (ImGui::Button("Generate Env")) {
@@ -422,6 +427,10 @@ void Game::renderUI()
 		ImGui::ProgressBar(progress, ImVec2(0.f, 0.f), buf);
 		ImGui::End();
 	}
+
+	// Algorithms window
+	ImGui::SetNextWindowPos(ImVec2((m_windowWidth / 5) * 4, 0));
+	ImGui::SetNextWindowSize(ImVec2(m_windowWidth / 5, m_windowHeight));
 	if (ImGui::Begin("Algorithms")) {
 		if (ImGui::BeginCombo("Algorithm", current_item, ImGuiComboFlags_HeightRegular)) {
 			for (int n = 0; n < IM_ARRAYSIZE(items); n++)
@@ -433,6 +442,18 @@ void Game::renderUI()
 					ImGui::SetItemDefaultFocus();   // Set the initial focus when opening the combo (scrolling + for keyboard navigation support in the upcoming navigation branch)
 			}
 			ImGui::EndCombo();
+		}
+		ImGui::Separator();
+		if (ImGui::TreeNode("Agents")) {
+			int currentAgent = 0;
+			for (auto & agent : m_agents) {
+				if (ImGui::TreeNode((void*)(intptr_t)currentAgent, "Agent %d", currentAgent)) {
+					ImGui::SliderFloat("Learning Rate:", &agent->beta, 0, 1.f, "%.3f");
+					ImGui::TreePop();
+				}
+				currentAgent++;
+			}
+			ImGui::TreePop();
 		}
 		ImGui::End();
 	}
@@ -448,7 +469,9 @@ void Game::runAlgoApproximated()
 	m_agents.clear();
 	for (int i = 0; i < m_numAgents; ++i) {
 		m_agents.push_back(new Agent(env, m_renderer));
-		m_agents.at(i)->buildModel();
+		m_agents.at(i)->model = m_agents.at(i)->buildModel();
+		std::cout << "Building Target Model" << std::endl;
+		m_agents.at(i)->targetModel = m_agents.at(i)->buildModel();
 	}
 
 	resetAlgorithm();
@@ -509,6 +532,10 @@ void Game::runAlgoApproximated()
 					agentVals.at(currentAgent).state = state_next;
 					if (agentVals.at(currentAgent).iter_episode >= maxIterations || done)
 						agent->m_done = true;
+					if (agentVals.at(currentAgent).iter_episode % 20 == 0) {
+						std::cout << "Update model for " << currentAgent << std::endl;
+						agent->updateTargetModel();
+					}
 				}
 				currentAgent++;
 			}
@@ -519,9 +546,6 @@ void Game::runAlgoApproximated()
 			};
 			if (!(std::find_if(m_agents.begin(), m_agents.end(), pred) != m_agents.end()))
 				break;
-		}
-		for (auto agent : m_agents) {
-			agent->epsilon = std::fmax(agent->epsilon * agent->epsilonDecay, 0.01);
 		}
 
 		int currentAgent = 0;
@@ -625,6 +649,16 @@ void Game::cherryTheme()
 	style.WindowBorderSize = 1.0f;
 }
 
+void Game::mapUI()
+{
+	int currentW = 0;
+	int currentH = 0;
+	SDL_GetWindowSize(m_window, &currentW, &currentH);
+	float scaleW = currentW / m_windowWidth;
+	float scaleH = currentH / m_windowHeight;
+
+}
+
 std::thread Game::agentSim(Agent * agent, std::vector<AgentTrainingValues> * agentVals, int currentAgent)
 {
 	return std::thread([=] {
@@ -642,12 +676,6 @@ std::thread Game::agentSim(Agent * agent, std::vector<AgentTrainingValues> * age
 			bool done = std::get<2>(state_vals);
 			agent->m_previousState = agent->m_currentState;
 			agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
-
-			/*	EpisodeVals vals;
-			vals.action = action;
-			vals.state = agent->m_currentState;
-			vals.nextState = state_next;
-			episodeData.at(currentAgent).push_back(vals);*/
 			agent->setOrientation(action);
 			agent->m_currentState = state_next;
 

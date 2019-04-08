@@ -15,9 +15,12 @@ Agent::Agent(Environment &env, SDL_Renderer * renderer) :
 		Q.at(row).resize(stateDim.second);
 		for (int col = 0; col < stateDim.second; ++col) {
 			Q.at(row).at(col).resize(actionDim.first);
+			for (int action = 0; action < actionDim.first; ++action) {
+				Q[row][col][action] = 0;
+			}
 		}
 	}
-	reset();
+			
 	m_sprite.loadTexture("Assets/agent.png", renderer);
 	m_sprite.setBounds(env.cellW, env.cellH);
 	m_backTracking = true;
@@ -74,9 +77,9 @@ int Agent::getAction(Environment & env)
 						break;
 					}
 				}
-if (actionRemoved) {
-	actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
-}
+				if (actionRemoved) {
+					actions_allowed.erase(std::remove(actions_allowed.begin(), actions_allowed.end(), actionToRemove), actions_allowed.end());
+				}
 			}
 		}
 		auto actionValues = Q[m_currentState.first][m_currentState.second];
@@ -129,9 +132,6 @@ void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, floa
 	auto nextActions = Q[state_next.first][state_next.second];
 
 	auto maxElement = *std::max_element(nextActions.begin(), nextActions.end());
-	if (reward == 100) {
-		std::cout << "";
-	}
 	Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - sa);
 }
 
@@ -315,12 +315,17 @@ tiny_dnn::network<tiny_dnn::sequential> Agent::buildModel()
 	*/
 
 	// FC is equivalent of Keras dense
-	
+	std::cout << "Build Model" << std::endl;
 	test_nn
-		<< fully_connected_layer(4, 3, true) << activation::relu()
-		<< fully_connected_layer(3, 3, true) << activation::relu()
-		<< fully_connected_layer(3, 5, true) << activation::softmax();
-	for (auto & layer : test_nn) {
+		<< fully_connected_layer(4, 3, true) << relu()
+		<< fully_connected_layer(3, 5, true) << softmax();
+	for (int i = 0; i < test_nn.depth(); i++) {
+		std::cout << "#layer:" << i << "\n";
+		std::cout << "layer type:" << test_nn[i]->layer_type() << "\n";
+		std::cout << "input:" << test_nn[i]->in_data_size() << "(" << test_nn[i]->in_data_shape() << ")\n";
+		std::cout << "output:" << test_nn[i]->out_data_size() << "(" << test_nn[i]->out_data_shape() << ")\n";
+	}
+	/*for (auto & layer : test_nn) {
 		std::cout << "Layer: " << std::endl;
 		auto lw = layer->weights();
 		if (!lw.empty()) {
@@ -338,7 +343,7 @@ tiny_dnn::network<tiny_dnn::sequential> Agent::buildModel()
 			}
 		}
 		std::cout << std::endl;
-	}
+	}*/
 	// Use mse for loss
 	// Use adam for optimser
 	
@@ -347,14 +352,15 @@ tiny_dnn::network<tiny_dnn::sequential> Agent::buildModel()
 
 void Agent::updateTargetModel()
 {
-
+	targetModel = model;
 }
 
 void Agent::replayMemory(AgentMemoryBatch memory)
 {
 	m_memory.push_back(memory);
-	if (epsilon > 0.1)
+	if (epsilon > 0.1f) {
 		epsilon *= epsilonDecay;
+	}
 }
 
 /// <summary>
@@ -374,15 +380,31 @@ void Agent::trainReplay()
 			miniBatch.push_back(memoryCopy.at(i));
 		}
 
+		std::vector<tiny_dnn::vec_t> updateInput;
+		std::vector<tiny_dnn::vec_t> updateTarget;
+		updateInput.resize(batchSize);
+		updateTarget.resize(batchSize);
+		for (int batch = 0; batch < batchSize; ++batch) {
+			updateInput.at(batch).resize(4);
+			updateTarget.at(batch).resize(5);
+			for (auto & input : updateInput.at(batch)) {
+				input = 0;
+			}
+			for (auto & targ : updateTarget.at(batch)) {
+				targ = 0;
+			}
+		}
+
 		for (int i = 0; i < bs; ++i) {
 			auto & currentMemory = miniBatch[i];
-			std::vector<float> states;
+			tiny_dnn::vec_t states;
 			states.push_back(currentMemory.state.first);
 			states.push_back(currentMemory.state.second);
 			auto goal = m_env.getGoals().at(0);
-			states.push_back(goal.first);
-			states.push_back(goal.second);
+			states.push_back(currentMemory.state.first - goal.first);
+			states.push_back(currentMemory.state.second - goal.second);
 			tiny_dnn::vec_t target = model.predict(states);
+
 			if (m_done)
 				target[currentMemory.action] = currentMemory.reward;
 			else {
@@ -390,14 +412,25 @@ void Agent::trainReplay()
 				states.clear();
 				states.push_back(currentMemory.nextState.first);
 				states.push_back(currentMemory.nextState.second);
-				states.push_back(goal.first);
-				states.push_back(goal.second);
+				states.push_back(currentMemory.nextState.first - goal.first);
+				states.push_back(currentMemory.nextState.second - goal.second);
 				auto predicted = model.predict(states);
+				auto maxElement = *std::max_element(predicted.begin(), predicted.end());
+
 				//auto maxPred = getBestActions(predicted);
-				
-				/*target = currentBatch.reward + ((tiny_dnn::float_t)gamma * model.predict(currentBatch.nextState));*/
+				auto val = currentMemory.reward + ((tiny_dnn::float_t)gamma * maxElement);
+				for (int i = 0; i < 5; ++i) {
+					target[i] = val;
+				}
 			}
+
+			updateInput[i] = states;
+			updateTarget[i] = target;
 		}
+		tiny_dnn::adam opt;
+		
+		model.fit<tiny_dnn::mse>(opt, updateInput, updateTarget, batchSize, 1);
+		//std::cout << "Loss" << model.get_loss<tiny_dnn::mse>(updateInput, updateTarget) << std::endl;;
 	}
 }
 
