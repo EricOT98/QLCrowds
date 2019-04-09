@@ -51,6 +51,7 @@ public:
 	void resetAlgorithm();
 	void renderUI();
 	void runAlgoApproximated();
+	void runJAQL();
 private:
 	SDL_Window * m_window;
 	SDL_Renderer* m_renderer;
@@ -87,11 +88,6 @@ private:
 	std::vector<bool> m_agentLerping;
 	std::vector<int> m_agentIterations;
 	int m_numAgents = 1;
-
-	void runRuleBased();
-	void runQLearning();
-	void runGeneralQ();
-	void runMARLQ();
 	std::vector<std::thread> m_threads;
 	bool m_multiThreaded = false;
 	void cherryTheme();

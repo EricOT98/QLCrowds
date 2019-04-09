@@ -145,6 +145,7 @@
     <ClCompile Include="imgui_sdl.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Sprite.cpp" />
+    <ClCompile Include="Tiles\Tiles.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Agent.h" />
@@ -160,6 +161,7 @@
     <ClInclude Include="imgui_sdl.h" />
     <ClInclude Include="MathUtils.h" />
     <ClInclude Include="Sprite.h" />
+    <ClInclude Include="Tiles\Tiles.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

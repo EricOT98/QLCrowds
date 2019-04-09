@@ -3,6 +3,8 @@
 #include <fstream>
 #include <SDL_image.h>
 #include "MathUtils.h"
+#include <map>
+#include <cmath>
 
 Game::Game()
 {
@@ -264,7 +266,7 @@ void Game::runAlgorithm()
 							auto state_vals = env.step(action, agent->m_currentState);
 							auto state_next = std::get<0>(state_vals);
 							auto reward = std::get<1>(state_vals);
-							if (reward == -1) {
+							if (reward == -10) {
 								agentVals.at(currentAgent).m_numCollisions++;
 							}
 							bool done = std::get<2>(state_vals);
@@ -366,7 +368,6 @@ void Game::resetAlgorithm()
 void Game::renderUI()
 {
 	// Configuration window
-	ImGui::ShowDemoWindow();
 	ImGui::SetNextWindowPos(confPos);
 	ImGui::SetNextWindowSize(confSize);
 	if (ImGui::Begin("Configuration", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
@@ -414,6 +415,9 @@ void Game::renderUI()
 		if(ImGui::Button("Approximated simulation")) {
 			runAlgoApproximated();
 		}
+		if (ImGui::Button("JAQL")) {
+			runJAQL();
+		}
 		// Animate a simple progress bar
 		static float progress = 0.0f, progress_dir = 1.0f;
 		//std::cout << currentEpisode << std::endl;
@@ -459,7 +463,7 @@ void Game::renderUI()
 		if (ImGui::BeginChild("Results", ImVec2(ImGui::GetWindowContentRegionWidth(), m_windowHeight / 2),false,ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
 			
 			ImGui::SliderInt("Agent Selected", &agentSelected, 0, m_agents.size() - 1, "%.d");
-			std::string temp = "Average Reward Value";
+			std::string temp = "Avg Reward";
 			if (!plotPoints.empty()) {
 				ImGui::PlotLines(temp.c_str(), &plotPoints.at(agentSelected).at(0), plotPoints.at(agentSelected).size(), 0, NULL, 0, FLT_MAX, ImVec2((ImGui::GetWindowContentRegionWidth() / 5) * 4, 100));
 			}
@@ -585,20 +589,13 @@ void Game::runAlgoApproximated()
 	std::cout << "TD : " << timeDif << std::endl;
 }
 
-void Game::runRuleBased()
+void Game::runJAQL()
 {
-}
-
-void Game::runQLearning()
-{
-}
-
-void Game::runGeneralQ()
-{
-}
-
-void Game::runMARLQ()
-{
+	std::vector<std::vector<std::vector<float>>> Q;
+	int n = m_agents.size();
+	int numStates = env.stateDim.first * env.stateDim.second;
+	int numJointStates = pow((double)numStates, n);
+	int numActions = pow((double)env.actionDim.first, n);
 }
 
 void Game::cherryTheme()

@@ -48,6 +48,9 @@
     <ClCompile Include="imgui_sdl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Tiles\Tiles.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Agent.h">
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="imgui_sdl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tiles\Tiles.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
