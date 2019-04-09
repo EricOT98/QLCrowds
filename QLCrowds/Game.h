@@ -74,8 +74,9 @@ private:
 	bool m_simulationStarted;
 	bool m_simulationFinished;
 	int numEpisodes = 500;
+	int minIterations = 0;
 	int maxIterations = 100;
-	std::vector<std::vector<PlottableData>> plotPoints;
+	std::vector<std::vector<float>> plotPoints;
 	const char* current_item = nullptr;
 	const char* items[4] = { "Q Learning", "JA Q Learning", "RBM" , "MultiRBM"};
 
@@ -95,6 +96,16 @@ private:
 	bool m_multiThreaded = false;
 	void cherryTheme();
 	void mapUI();
+
+	//UI vals;
+	ImVec2 envPos;
+	ImVec2 envSize;
+	ImVec2 confPos;
+	ImVec2 confSize;
+	ImVec2 algoPos;
+	ImVec2 algoSize;
+
+	int agentSelected = 0;
 };
 
 #endif // !GAME_H

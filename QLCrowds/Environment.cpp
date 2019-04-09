@@ -2,6 +2,7 @@
 #include <limits>
 #include <algorithm>
 #include <iostream>
+#include <math.h>
 
 /// <summary>
 /// Initializes a new instance of the <see cref="Environment"/> class.
@@ -59,9 +60,9 @@ std::tuple<std::pair<int, int>, float, bool> Environment::step(int action, std::
 	float reward = R[state.first][state.second][action] - (std::abs(next_state.first - state.first) + std::abs(next_state.second - state.second));
 	bool done = m_tileFlags[next_state.first][next_state.second] & QLCTileGoal;
 	
-	/*if (!done && m_tileFlags[next_state.first][next_state.second] & QLCContainsAgent) {
+	if (!done && m_tileFlags[next_state.first][next_state.second] & QLCContainsAgent) {
 		reward = -1.f;
-	}*/
+	}
 	return std::make_tuple(next_state, reward, done);
 }
 
@@ -92,7 +93,7 @@ std::vector<int> Environment::allowedActions(const std::pair<int, int> & state)
 		if (!(upFlags & QLCTileObstacle))
 			allowed.push_back(action_dict["up"]);
 	}
-	if (row < ySize - 1) {
+	if (row < stateDim.first - 1) {
 		auto & downFlags = m_tileFlags[row + 1][col];
 		if (!(downFlags & QLCTileObstacle))
 			allowed.push_back(action_dict["down"]);
@@ -102,7 +103,7 @@ std::vector<int> Environment::allowedActions(const std::pair<int, int> & state)
 		if (!(leftFlags & QLCTileObstacle))
 			allowed.push_back(action_dict["left"]);
 	}
-	if (col < xSize - 1) {
+	if (col < stateDim.second - 1) {
 		auto & rightFlags = m_tileFlags[row][col + 1];
 		if (!(rightFlags & QLCTileObstacle))
 			allowed.push_back(action_dict["right"]);
@@ -141,11 +142,11 @@ std::pair<int, int>Environment::getClosestAgent(const std::pair<int, int>& state
 /// </summary>
 void Environment::generateGridLines()
 {
-	cellW = width / stateDim.second;
-	cellH = height / stateDim.first;
+	cellW = floor(width / (float)stateDim.second);
+	cellH = floor(height / (float)stateDim.first);
 	gridLines.clear();
 	int endPosX = gridPosX + (stateDim.second * cellW);
-	for (int row = 0; row < stateDim.first + 1; ++row) {
+	for (int row = 0; row <= stateDim.first; ++row) {
 		int yPos = gridPosY + (row * cellH);
 		Line l;
 		l.x1 = gridPosX;
@@ -155,7 +156,7 @@ void Environment::generateGridLines()
 		gridLines.push_back(l);
 	}
 	int endPosY = gridPosY + (stateDim.first * cellH);
-	for (int col = 0; col < stateDim.second + 1; ++col) {
+	for (int col = 0; col <= stateDim.second; ++col) {
 		int xPos = gridPosX + (col * cellW);
 		Line l;
 		l.x1 = xPos;
@@ -391,4 +392,28 @@ std::map<std::pair<int, int>, std::vector<int>> Environment::generateOptimalPoli
 		}
 	}
 	return std::map<std::pair<int, int>, std::vector<int>>();
+}
+
+int Environment::getNumberOfObstacles()
+{
+	int numObstacles = 0;
+	for (int row = 0; row < stateDim.first; ++row) {
+		for (int col = 0; col < stateDim.second; ++col) {
+			if (m_tileFlags[row][col] & QLCTileObstacle)
+				numObstacles++;
+		}
+	}
+	return numObstacles;
+}
+
+std::vector<std::pair<int, int>> Environment::getObstacles()
+{
+	std::vector<std::pair<int, int>> obstacles;
+	for (int row = 0; row < stateDim.first; ++row) {
+		for (int col = 0; col < stateDim.second; ++col) {
+			if (m_tileFlags[row][col] & QLCTileObstacle)
+				obstacles.push_back(std::make_pair(row, col));
+		}
+	}
+	return obstacles;
 }

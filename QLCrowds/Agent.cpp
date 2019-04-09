@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <math.h>
 
 Agent::Agent(Environment &env, SDL_Renderer * renderer) :
 	m_env(env)
@@ -314,36 +315,23 @@ tiny_dnn::network<tiny_dnn::sequential> Agent::buildModel()
 
 	*/
 
+	int numGoals = m_env.getGoals().size();
+	int numObs = m_env.getNumberOfObstacles();
+
 	// FC is equivalent of Keras dense
 	std::cout << "Build Model" << std::endl;
+	inputLayer = 2 + (2 * (numGoals + numObs));
+	outputLayer = 5;
+	hiddenLayer = ceil(sqrt(inputLayer * outputLayer));
 	test_nn
-		<< fully_connected_layer(4, 3, true) << relu()
-		<< fully_connected_layer(3, 5, true) << softmax();
+		<< fully_connected_layer(inputLayer, hiddenLayer, true) << relu()
+		<< fully_connected_layer(hiddenLayer, outputLayer, true) << softmax();
 	for (int i = 0; i < test_nn.depth(); i++) {
 		std::cout << "#layer:" << i << "\n";
 		std::cout << "layer type:" << test_nn[i]->layer_type() << "\n";
 		std::cout << "input:" << test_nn[i]->in_data_size() << "(" << test_nn[i]->in_data_shape() << ")\n";
 		std::cout << "output:" << test_nn[i]->out_data_size() << "(" << test_nn[i]->out_data_shape() << ")\n";
 	}
-	/*for (auto & layer : test_nn) {
-		std::cout << "Layer: " << std::endl;
-		auto lw = layer->weights();
-		if (!lw.empty()) {
-			auto & w = *lw[0];
-			auto & b = *lw[1];
-			std::cout << "Weights ";
-			for (auto & weight : w) {
-				std::cout << weight << ", ";
-			}
-			std::cout << std::endl;
-
-			std::cout << "Biases: ";
-			for (auto & bias : b) {
-				std::cout << bias << ", ";
-			}
-		}
-		std::cout << std::endl;
-	}*/
 	// Use mse for loss
 	// Use adam for optimser
 	
@@ -358,8 +346,9 @@ void Agent::updateTargetModel()
 void Agent::replayMemory(AgentMemoryBatch memory)
 {
 	m_memory.push_back(memory);
-	if (epsilon > 0.1f) {
-		epsilon *= epsilonDecay;
+	// Keep only maxMemorySize items in memory
+	if (m_memory.size() > maxMemorySize) {
+		m_memory.pop_front();
 	}
 }
 
@@ -385,8 +374,8 @@ void Agent::trainReplay()
 		updateInput.resize(batchSize);
 		updateTarget.resize(batchSize);
 		for (int batch = 0; batch < batchSize; ++batch) {
-			updateInput.at(batch).resize(4);
-			updateTarget.at(batch).resize(5);
+			updateInput.at(batch).resize(inputLayer);
+			updateTarget.at(batch).resize(outputLayer);
 			for (auto & input : updateInput.at(batch)) {
 				input = 0;
 			}
@@ -398,28 +387,43 @@ void Agent::trainReplay()
 		for (int i = 0; i < bs; ++i) {
 			auto & currentMemory = miniBatch[i];
 			tiny_dnn::vec_t states;
+
+			// Get the state items
+			auto goals = m_env.getGoals();
+			auto obstacles = m_env.getObstacles();
+
 			states.push_back(currentMemory.state.first);
 			states.push_back(currentMemory.state.second);
-			auto goal = m_env.getGoals().at(0);
-			states.push_back(currentMemory.state.first - goal.first);
-			states.push_back(currentMemory.state.second - goal.second);
+			for (auto & goal : goals) {
+				states.push_back(currentMemory.state.first - goal.first);
+				states.push_back(currentMemory.state.second - goal.second);
+			}
+			for (auto & obs : obstacles) {
+				states.push_back(currentMemory.state.first - obs.first);
+				states.push_back(currentMemory.state.second - obs.second);
+			}
 			tiny_dnn::vec_t target = model.predict(states);
 
 			if (m_done)
 				target[currentMemory.action] = currentMemory.reward;
 			else {
 				//Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - sa);
-				states.clear();
-				states.push_back(currentMemory.nextState.first);
-				states.push_back(currentMemory.nextState.second);
-				states.push_back(currentMemory.nextState.first - goal.first);
-				states.push_back(currentMemory.nextState.second - goal.second);
-				auto predicted = model.predict(states);
+				tiny_dnn::vec_t next_states;
+				next_states.push_back(currentMemory.nextState.first);
+				next_states.push_back(currentMemory.nextState.second);
+				for (auto & goal : goals) {
+					next_states.push_back(currentMemory.nextState.first - goal.first);
+					next_states.push_back(currentMemory.nextState.second - goal.second);
+				}
+				for (auto & obs : obstacles) {
+					next_states.push_back(currentMemory.nextState.first - obs.first);
+					next_states.push_back(currentMemory.nextState.second - obs.second);
+				}
+				auto predicted = model.predict(next_states);
 				auto maxElement = *std::max_element(predicted.begin(), predicted.end());
 
-				//auto maxPred = getBestActions(predicted);
 				auto val = currentMemory.reward + ((tiny_dnn::float_t)gamma * maxElement);
-				for (int i = 0; i < 5; ++i) {
+				for (int i = 0; i < outputLayer; ++i) {
 					target[i] = val;
 				}
 			}
@@ -434,15 +438,28 @@ void Agent::trainReplay()
 	}
 }
 
-tiny_dnn::vec_t Agent::getBestActions(tiny_dnn::vec_t actions)
+void Agent::resizeQTable()
 {
-	auto maxElement = std::max_element(actions.begin(), actions.end());
-	tiny_dnn::vec_t maxActions;
-	/*for (auto & action : actions) {
-		if (action == *maxElement)
-			maxActions.push_back(action);
-	}*/
-	return maxActions;
+	Q.clear();
+	stateDim = m_env.stateDim;
+	actionDim = m_env.actionDim;
+	for (int row = 0; row < stateDim.first; ++row) {
+		std::vector<std::vector<float>> newRow;
+		for (int col = 0; col < stateDim.second; ++col) {
+			std::vector<float> actions;
+			for (int a = 0; a < actionDim.first; ++a) {
+				actions.push_back(0);
+			}
+			newRow.push_back(actions);
+		}
+		Q.push_back(newRow);
+	}
+}
+
+void Agent::resizeStates()
+{
+	stateDim = m_env.stateDim;
+	actionDim = m_env.actionDim;
 }
 
 void Agent::displayGreedyPolicy(Environment & env)

@@ -36,7 +36,6 @@ public:
 
 	std::vector<std::vector<std::vector<float>>> Q; //Q Table for action state coupling
 	bool m_done = false;
-	std::vector<AgentMemoryBatch> m_memory;
 
 	// Backtracking controls
 	std::pair<int, int> m_currentState;
@@ -64,7 +63,14 @@ public:
 	void updateTargetModel();
 	void replayMemory(AgentMemoryBatch memory);
 	void trainReplay();
-	tiny_dnn::vec_t getBestActions(tiny_dnn::vec_t actions);
+	void resizeQTable();
+	void resizeStates();
+
+	std::deque<AgentMemoryBatch> m_memory;
+	int maxMemorySize = 1000;
+	int inputLayer;
+	int outputLayer;
+	int hiddenLayer;
 
 	// Debug functions
 	void displayGreedyPolicy(Environment & env);
