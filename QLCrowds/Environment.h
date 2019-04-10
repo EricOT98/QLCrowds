@@ -17,7 +17,7 @@ enum QLCTileFlags_ {
 	QLCContainsAgent = 1 << 2,
 	QLCVisited = 1 << 3
 };
-
+typedef std::pair<int, int> State;
 /// <summary>
 /// A class to represent a gridworld environment for ML agent simulations
 /// Utilises discrete spaces.
@@ -57,6 +57,7 @@ public:
 	
 	void buildRewards();
 	std::tuple<std::pair<int, int>, float, bool> step(int action, std::pair<int, int> & state);
+	std::tuple<std::vector<State>, float, bool> stepJAQL(std::vector<int> & actions, std::vector<State> & states);
 	void reset();
 	std::vector<int> allowedActions(const std::pair<int, int> & state);
 	std::pair<int, int> getClosestAgent(const std::pair<int, int> & state);

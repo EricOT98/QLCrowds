@@ -5,6 +5,9 @@
 #include "MathUtils.h"
 #include <map>
 #include <cmath>
+#include <chrono>
+
+typedef std::chrono::system_clock Clock;
 
 Game::Game()
 {
@@ -35,6 +38,7 @@ Game::Game()
 	ImGuiSDL::Initialize(m_renderer, m_windowWidth, m_windowHeight);
 
 	ImGui_ImplSDL2_InitForOpenGL(m_window, nullptr);
+	current_item = items[0];
 	cherryTheme();
 
 	// Actual code init
@@ -52,8 +56,6 @@ Game::Game()
 		m_agentLerping.push_back(false);
 		m_agentIterations.push_back(0);
 	}
-	// Set Imgui item selected
-	current_item = items[0];
 }
 
 Game::~Game()
@@ -120,11 +122,6 @@ void Game::update(float deltaTime)
 			}
 		}
 	}
-}
-
-void Game::multiThreadedUpdate(float deltaTime)
-{
-
 }
 
 void Game::render()
@@ -204,6 +201,25 @@ void Game::saveEpisode()
 
 void Game::runAlgorithm()
 {
+	std::ofstream ofs;
+	std::string filepath = "Logs/";
+	auto now = Clock::now();
+	std::time_t now_c = Clock::to_time_t(now);
+	struct tm *parts = std::localtime(&now_c);
+	std::string delim = "";
+	filepath += std::to_string(1900 + parts->tm_year);
+	filepath += delim;
+	filepath += std::to_string(1 + parts->tm_mon);
+	filepath += delim;
+	filepath += std::to_string(parts->tm_mday);
+	filepath += delim;
+	filepath += std::to_string(parts->tm_hour);
+	filepath += delim;
+	filepath += std::to_string(parts->tm_min);
+	filepath += delim;
+	filepath += "Algo.txt";
+
+	ofs.open(filepath);
 	if (!m_algoStarted) {
 		float currentTime = SDL_GetTicks() / 1000.0f;
 		float timeDif = 0;
@@ -304,16 +320,19 @@ void Game::runAlgorithm()
 			}
 
 			int currentAgent = 0;
+			ofs << i << " ";
 			for (auto agent : m_agents) {
+				//ofs << i << " " << agent->epsilon << agentVals.at(currentAgent).iter_episode << " " << agentVals.at(currentAgent).reward_episode << " " << agentVals.at(currentAgent).m_numCollisions << std::endl;
 				std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
+				ofs << agentVals.at(currentAgent).reward_episode << " ";
 				currentAgent++;
 			}
+			ofs << std::endl;
 			if (!m_multiThreaded) {
 				for (int i = 0; i < m_agents.size(); ++i) {
 					plotPoints.at(i).push_back(agentVals.at(i).reward_episode);
 				}
 				m_episodeData.push_back(episodeData);
-
 			} 
 			else {
 				for (auto & thread : m_threads) {
@@ -333,6 +352,8 @@ void Game::runAlgorithm()
 		m_algoFinished = true;
 		timeDif = (SDL_GetTicks() / 1000) - currentTime;
 		std::cout << "TD : " << timeDif << std::endl;
+		ofs << "Time Taken: " << timeDif << std::endl;
+		ofs.close();
 	}
 }
 
@@ -343,6 +364,31 @@ void Game::startSimulation()
 	currentEpisode = 0;
 	currentIteration = 0;
 	currentPercent = 0;
+}
+
+void Game::stopSimulation()
+{
+	m_simulationStarted = false;
+	m_algoStarted = false;
+	currentEpisode = 0;
+	currentIteration = 0;
+	currentPercent = 0;
+
+	m_agentDone.clear();
+	m_agentLerping.clear();
+	m_agentIterations.clear();
+	m_lerpPercentages.clear();
+	plotPoints.clear();
+	for (auto & thread : m_threads) {
+		if (thread.joinable())
+			thread.join();
+	}
+	m_threads.clear();
+	for (auto agent : m_agents) {
+		agent->reset();
+	}
+	m_episodeData.clear();
+	disableInputs = false;
 }
 
 void Game::resetSimulation()
@@ -367,10 +413,16 @@ void Game::resetAlgorithm()
 
 void Game::renderUI()
 {
+	disableInputs = m_algoStarted || m_simulationStarted;
 	// Configuration window
 	ImGui::SetNextWindowPos(confPos);
 	ImGui::SetNextWindowSize(confSize);
 	if (ImGui::Begin("Configuration", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
+		ImGui::SetWindowFontScale(fontScale);
+		if (disableInputs) {
+			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+		}
 		if (ImGui::DragInt("Num Agents", &m_numAgents, 1, 1, 100)) {
 			std::cout << "Creating agents" << std::endl;
 			if (m_numAgents > m_agents.size()) {
@@ -402,6 +454,11 @@ void Game::renderUI()
 			if (maxIterations < minIterations)
 				maxIterations = minIterations;
 		}
+		if (disableInputs)
+		{
+			ImGui::PopItemFlag();
+			ImGui::PopStyleVar();
+		}
 		ImGui::InputInt("Num Episodes: ", &numEpisodes, 1, 100, ImGuiWindowFlags_NoMove);
 		ImGui::InputInt("Num Iterations: ", &maxIterations, 1, 100, ImGuiWindowFlags_NoMove);
 		ImGui::SliderFloat("Lerp Percent", &lerpPercent, 0, 1.f, "%.3f");
@@ -411,6 +468,9 @@ void Game::renderUI()
 			}
 			runAlgorithm();
 			startSimulation();
+		}
+		if (ImGui::Button("Stop Simultation")) {
+			stopSimulation();
 		}
 		if(ImGui::Button("Approximated simulation")) {
 			runAlgoApproximated();
@@ -432,6 +492,7 @@ void Game::renderUI()
 	ImGui::SetNextWindowPos(algoPos);
 	ImGui::SetNextWindowSize(algoSize);
 	if (ImGui::Begin("Algorithms", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
+		ImGui::SetWindowFontScale(fontScale);
 		if (ImGui::BeginCombo("Algorithm", current_item, ImGuiComboFlags_HeightRegular)) {
 			for (int n = 0; n < IM_ARRAYSIZE(items); n++)
 			{
@@ -455,20 +516,27 @@ void Game::renderUI()
 			}
 			ImGui::TreePop();
 		}
-		/*if (!plotPoints.empty()) {
-			std::string temp = "Average Reward Value";
-			ImGui::PlotLines(
-				temp.c_str(), &plotPoints.at(currentAgent).at(0), plotPoints.at(currentAgent).size(), 0, NULL, 0, FLT_MAX, ImVec2((ImGui::GetWindowContentRegionWidth() / 5) * 4, 100));
-		}*/
 		if (ImGui::BeginChild("Results", ImVec2(ImGui::GetWindowContentRegionWidth(), m_windowHeight / 2),false,ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
-			
-			ImGui::SliderInt("Agent Selected", &agentSelected, 0, m_agents.size() - 1, "%.d");
-			std::string temp = "Avg Reward";
-			if (!plotPoints.empty()) {
-				ImGui::PlotLines(temp.c_str(), &plotPoints.at(agentSelected).at(0), plotPoints.at(agentSelected).size(), 0, NULL, 0, FLT_MAX, ImVec2((ImGui::GetWindowContentRegionWidth() / 5) * 4, 100));
-			}
-			else {
-				ImGui::LabelText("No Points", "No Data Available");
+			ImGui::SetWindowFontScale(fontScale);
+			if(ImGui::TreeNode("Show Results")) {
+				ImGui::SliderInt("Agent Selected", &agentSelected, 0, m_agents.size() - 1, "%.d");
+				std::string temp = "Avg Reward";
+				if (!plotPoints.empty()) {
+					auto & rewards = plotPoints.at(agentSelected);
+					float avg = 0;
+					float sum = 0;
+					for (auto & p : rewards) {
+						sum += p;
+					}
+					avg = sum / (float)rewards.size();
+					std::string s = "Avg reward value " + std::to_string(avg);
+					ImGui::Text(s.c_str());
+					ImGui::PlotLines(temp.c_str(), &plotPoints.at(agentSelected).at(0), plotPoints.at(agentSelected).size(), 0, NULL, 0, FLT_MAX, ImVec2(ImGui::GetWindowContentRegionWidth(), 100));
+				}
+				else {
+					ImGui::Text("No Points as No Data Available");
+				}
+				ImGui::TreePop();
 			}
 			ImGui::EndChild();
 		}
@@ -550,9 +618,11 @@ void Game::runAlgoApproximated()
 					agentVals.at(currentAgent).state = state_next;
 					if (agentVals.at(currentAgent).iter_episode >= maxIterations || done) {
 						agent->m_done = true;
-						agent->updateTargetModel();
+						if (agentVals.at(currentAgent).iter_episode < maxIterations) {
+							agent->updateTargetModel();
+						}
 					}
-					if (agentVals.at(currentAgent).iter_episode % 20 == 0) {
+					if (agentVals.at(currentAgent).iter_episode % 100 == 0) {
 						std::cout << "Update model for " << currentAgent << std::endl;
 						agent->updateTargetModel();
 					}
@@ -591,11 +661,202 @@ void Game::runAlgoApproximated()
 
 void Game::runJAQL()
 {
-	std::vector<std::vector<std::vector<float>>> Q;
+	float beta = 0.99f;
+	float gamma = 0.99f;
+	agentEpsilon = 1;
+	m_agents.clear();
+	for (int i = 0; i < 2; ++i) {
+		m_agents.push_back(new Agent(env, m_renderer));
+	}
 	int n = m_agents.size();
 	int numStates = env.stateDim.first * env.stateDim.second;
 	int numJointStates = pow((double)numStates, n);
-	int numActions = pow((double)env.actionDim.first, n);
+	int numJointActions = pow((double)env.actionDim.first, n);
+	jointAction ja;
+	for (int i = 0; i < env.actionDim.first; ++i) {
+		for (int j = 0; j < env.actionDim.first; ++j) {
+			ja.insert(std::make_pair(std::make_pair(i, j), 0));
+		}
+	}
+	
+	std::vector<std::pair<int, int>> states;
+	for (int row = 0; row < env.stateDim.first; ++row) {
+		for (int col = 0; col < env.stateDim.second; ++col) {
+			states.push_back(std::make_pair(row, col));
+		}
+	}
+
+	std::vector<std::vector<std::pair<int, int>>> astates;
+	for (int a = 0; a < n; ++a) {
+		astates.push_back(states);
+	}
+	for (int s = 0; s < states.size(); ++s) {
+		for (int s2 = 0; s2 < states.size(); ++s2) {
+			std::vector<std::pair<int, int>> js;
+			js.push_back(states.at(s));
+			js.push_back(states.at(s2));
+			Q.insert(std::make_pair(js, ja));
+		}
+	}
+
+	/// <summary>
+	/// /////////
+	/// </summary>
+	float currentTime = SDL_GetTicks() / 1000.0f;
+	float timeDif = 0;
+	m_agentDone.clear();
+	m_agentLerping.clear();
+	m_agentIterations.clear();
+	m_lerpPercentages.clear();
+	plotPoints.clear();
+	plotPoints.resize(m_numAgents);
+	for (int i = 0; i < m_numAgents; ++i) {
+		m_lerpPercentages.push_back(0);
+		m_agentDone.push_back(false);
+		m_agentLerping.push_back(false);
+		m_agentIterations.push_back(0);
+	}
+	agentSelected = 0;
+	resetAlgorithm();
+	m_algoStarted = true;
+	m_episodeData.clear();
+
+	for (int i = 0; i < numEpisodes; ++i) {
+		std::cout << "=================================================" << std::endl;
+		std::vector<std::vector<EpisodeVals>> episodeData;
+		episodeData.resize(m_agents.size());
+		std::vector<AgentTrainingValues> agentVals;
+		for (int i = 0; i < m_agents.size(); ++i) {
+			auto & agent = m_agents.at(i);
+			agent->m_done = false;
+			auto states = env.getSpawnablePoint();
+			std::pair<int, int> state = states.at(std::rand() % states.size());
+			agent->m_previousState = state;
+			agent->m_currentState = state;
+			agentVals.push_back(AgentTrainingValues(env));
+		}
+		auto pred = [](const Agent *a) {
+			return !a->m_done;
+		};
+		// While no agent done
+		while (std::find_if(m_agents.begin(), m_agents.end(), pred) != m_agents.end()) {
+			// Chose action
+			auto action = getJAQAction();
+			std::cout << "A:" << action.first << ", " << action.second << std::endl;
+
+			// Environment step returing reward, nextstate and done
+			std::vector<int> actions = { action.first, action.second };
+			std::vector<State> states = { m_agents.at(0)->m_currentState, m_agents.at(1)->m_currentState };
+			auto state_vals = env.stepJAQL(actions, states);
+			auto state_next = std::get<0>(state_vals);
+			auto reward = std::get<1>(state_vals);
+			bool done = std::get<2>(state_vals);
+
+
+			std::vector<State> jointStates{ m_agents[0]->m_currentState,  m_agents[1]->m_currentState };
+			float & sa = Q[jointStates][action];
+			auto nextActions = Q[state_next];
+
+			auto maxElement = *std::max_element(nextActions.begin(), nextActions.end());
+			auto maxVal = maxElement.second;
+			Q[jointStates][action] += beta * (reward + gamma * maxVal - sa);
+		}
+		if (std::find_if(m_agents.begin(), m_agents.end(), pred) != m_agents.end()) {
+			// backtrack all agents
+			for (auto & agent : m_agents) {
+				agent->m_currentState = agent->m_previousState;
+			}
+			auto action = getJAQAction();
+			std::vector<int> actions = { action.first, action.second };
+			std::vector<State> states = { m_agents.at(0)->m_currentState, m_agents.at(1)->m_currentState };
+			auto state_vals = env.stepJAQL(actions, states);
+			auto state_next = std::get<0>(state_vals);
+			auto reward = std::get<1>(state_vals);
+			bool done = std::get<2>(state_vals);
+
+			std::vector<State> jointStates{ m_agents[0]->m_currentState,  m_agents[1]->m_currentState };
+			float & sa = Q[jointStates][action];
+			auto nextActions = Q[state_next];
+			auto maxElement = *std::max_element(nextActions.begin(), nextActions.end());
+			auto maxVal = maxElement.second;
+			Q[jointStates][action] += beta * (reward + gamma * maxVal - sa);
+		}
+		agentEpsilon = std::fmax(agentEpsilon * m_agents.at(0)->epsilonDecay, 0.01);
+
+		int currentAgent = 0;
+		for (auto agent : m_agents) {
+			std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agentEpsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
+			currentAgent++;
+		}
+		for (int i = 0; i < m_agents.size(); ++i) {
+			plotPoints.at(i).push_back(agentVals.at(i).reward_episode);
+		}
+		m_episodeData.push_back(episodeData);
+	}
+	// Display the final policy
+	for (auto agent : m_agents) {
+		std::cout << "Agent: " << std::endl;
+		agent->displayGreedyPolicy(env);
+	}
+	env.createHeatmapVals();
+	m_algoStarted = false;
+	m_algoFinished = true;
+	timeDif = (SDL_GetTicks() / 1000) - currentTime;
+	std::cout << "TD : " << timeDif << std::endl;
+}
+
+std::pair<int, int> Game::getJAQAction()
+{
+	std::random_device rand_dev;
+	std::mt19937 generator(rand_dev());
+	std::uniform_real_distribution<double> distr(0, 1);
+	double randVal = distr(generator);
+
+	if (randVal < agentEpsilon) {
+		auto actions_allowed = env.allowedActions(m_agents.at(0)->m_currentState);
+		std::uniform_int_distribution<int>  distr(0, actions_allowed.size() - 1);
+		int index = distr(generator);
+		std::pair<int, int> actions;
+		actions.first = actions_allowed.at(index);
+		actions_allowed = env.allowedActions(m_agents.at(1)->m_currentState);
+		distr = std::uniform_int_distribution<int>(0, actions_allowed.size() - 1);
+		index = distr(generator);
+		actions.second = actions_allowed.at(index);
+		return actions;
+	}
+	else {
+		std::vector<State> currentStates{ m_agents.at(0)->m_currentState, m_agents.at(1)->m_currentState };
+		auto actionValues = Q[currentStates];
+
+		auto actions_allowed = env.allowedActions(m_agents.at(0)->m_currentState);
+		auto actions_allowed2 = env.allowedActions(m_agents.at(1)->m_currentState);
+		std::vector<std::pair<int, int>> possibleActionPairs;
+		for (auto action : actions_allowed) {
+			for (auto & a2 : actions_allowed2) {
+				possibleActionPairs.push_back(std::make_pair(action, a2));
+			}
+		}
+
+		std::map<std::pair<int, int>, float> qs;
+		for (auto action : possibleActionPairs) {
+			qs[action] = actionValues.at(action);
+		}
+		float maxVal = qs.begin()->second;
+		for (auto & actionMapping : qs) {
+			if (actionMapping.second > maxVal) {
+				maxVal = actionMapping.second;
+			}
+		}
+		std::vector<std::pair<int, int>> actions_greedy;
+		for (auto & actionMapping : qs) {
+			if (actionMapping.second == maxVal) {
+				actions_greedy.push_back(actionMapping.first);
+			}
+		}
+		std::uniform_int_distribution<int>  distr(0, actions_greedy.size() - 1);
+		int index = distr(generator);
+		return actions_greedy.at(index);
+	}
 }
 
 void Game::cherryTheme()
@@ -675,7 +936,7 @@ void Game::mapUI()
 {
 	envPos.x = 0;
 	envPos.y = 0;
-	envSize.x = (m_windowWidth / 5) * 4;
+	envSize.x = (m_windowWidth / 5) * 3;
 	envSize.y = (m_windowHeight / 5) * 3;
 	env.resizeGridTo(envPos.x, envPos.y, envSize.x, envSize.y);
 	int actualGridW = env.cellW * env.stateDim.second;

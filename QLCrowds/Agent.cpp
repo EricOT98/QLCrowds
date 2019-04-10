@@ -62,7 +62,6 @@ int Agent::getAction(Environment & env)
 		return actions_allowed.at(index);
 	}
 	else {
-
 		auto actions_allowed = env.allowedActions(m_currentState);
 		if (m_backTracking) {
 			// Strip away backtracking actions

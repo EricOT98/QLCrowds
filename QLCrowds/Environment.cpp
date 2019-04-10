@@ -61,9 +61,45 @@ std::tuple<std::pair<int, int>, float, bool> Environment::step(int action, std::
 	bool done = m_tileFlags[next_state.first][next_state.second] & QLCTileGoal;
 
 	if (!done && m_tileFlags[next_state.first][next_state.second] & QLCContainsAgent) {
-		reward = -10.f;
+		if (next_state.first != state.first && next_state.second != state.second)
+			reward = -10.f;
 	}
 	return std::make_tuple(next_state, reward, done);
+}
+
+std::tuple<std::vector<State>, float, bool> Environment::stepJAQL(std::vector<int> & actions, std::vector<State>& states)
+{
+	for (auto & state : m_states) {
+		m_heatMap[state.first][state.second] += 1;
+	}
+	std::vector<State> nextStates;
+	for (int i = 0; i < states.size(); ++i) {
+		auto & state = states.at(i);
+		auto & action = actions.at(i);
+		nextStates.push_back(
+			std::make_pair(
+				state.first + actionCoords[action].first,
+				state.second + actionCoords[action].second
+			)
+		);
+	}
+	float reward = 0;
+	bool done = false;
+	for (auto & next_state : nextStates) {
+		if (m_tileFlags[next_state.first][next_state.second] & QLCTileGoal) {
+			reward += 100;
+			done = true;
+			//break;
+		}
+		else if (m_tileFlags[next_state.first][next_state.second] & QLCContainsAgent) {
+			reward -= 10;
+		}
+		else {
+			reward -= 0.1f;
+		}
+	}
+	
+	return std::make_tuple(nextStates, reward, done);
 }
 
 /// <summary>

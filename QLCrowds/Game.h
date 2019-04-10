@@ -12,6 +12,7 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_sdl.h"
 #include <tiny_dnn/tiny_dnn.h>
+#include "imgui/imgui_internal.h"
 
 struct EpisodeVals {
 	int action;
@@ -40,18 +41,22 @@ public:
 	std::thread agentSim(Agent * agent, std::vector<AgentTrainingValues> * agentVals, int currentAgent);
 
 	void update(float deltaTime);
-	void multiThreadedUpdate(float deltaTime);
 	void render();
 	void run();
 	void processEvents();
 	void saveEpisode();
 	void runAlgorithm();
 	void startSimulation();
+	void stopSimulation();
 	void resetSimulation();
 	void resetAlgorithm();
 	void renderUI();
 	void runAlgoApproximated();
 	void runJAQL();
+	bool disableInputs;
+	std::pair<int, int> getJAQAction();
+
+	int agentEpsilon;
 private:
 	SDL_Window * m_window;
 	SDL_Renderer* m_renderer;
@@ -89,6 +94,7 @@ private:
 	std::vector<int> m_agentIterations;
 	int m_numAgents = 1;
 	std::vector<std::thread> m_threads;
+	std::thread m_runThread;
 	bool m_multiThreaded = false;
 	void cherryTheme();
 	void mapUI();
@@ -102,6 +108,14 @@ private:
 	ImVec2 algoSize;
 
 	int agentSelected = 0;
+	ImFont * m_font;
+	float fontScale = 1.25;
+	bool resultsActive;
+	bool ableToRunAlgo = false;
+
+	// JAQL
+	typedef std::map<std::pair<int, int>, float> jointAction;
+	std::map<std::vector<std::pair<int, int>>, jointAction> Q;
 };
 
 #endif // !GAME_H
