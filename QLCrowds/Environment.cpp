@@ -45,10 +45,11 @@ void Environment::buildRewards()
 }
 
 /// <summary>
-/// Steps the specified action.
+/// Steps the environment one step forward in the simulation.
+/// Calcualates the next state of the agent and returns the reward value, next state and completion values.
 /// </summary>
 /// <param name="action">The action.</param>
-/// <returns></returns>
+/// <returns>A tuple of the agents next state , reward and completion values</returns>
 std::tuple<std::pair<int, int>, float, bool> Environment::step(int action, std::pair<int, int> & state)
 {
 	m_heatMap[state.first][state.second] += 1;
@@ -67,6 +68,13 @@ std::tuple<std::pair<int, int>, float, bool> Environment::step(int action, std::
 	return std::make_tuple(next_state, reward, done);
 }
 
+/// <summary>
+/// Steps the environment in a JAQL simulation by taking in the action coupling of agents as a vector of actions and the state coupling
+/// as a vector of states. These values are then used to make the combined next state and generate a reward value based on the combined agent actions.
+/// </summary>
+/// <param name="actions">The actions.</param>
+/// <param name="states">The states.</param>
+/// <returns></returns>
 std::tuple<std::vector<State>, float, bool> Environment::stepJAQL(std::vector<int> & actions, std::vector<State>& states)
 {
 	for (auto & state : m_states) {
@@ -204,13 +212,11 @@ void Environment::generateGridLines()
 }
 
 /// <summary>
-/// Renders the specified renderer.
+/// Renders the grid based environment using the specified renderer.
 /// </summary>
 /// <param name="renderer">The renderer.</param>
 void Environment::render(SDL_Renderer & renderer)
 {
-	SDL_SetRenderDrawColor(&renderer, 0, 255, 0, 255);
-	SDL_RenderDrawLine(&renderer, 960, 0, 960, 1080);
 	SDL_SetRenderDrawColor(&renderer, 255, 0, 0, 255);
 	for (auto & line : gridLines) {
 		SDL_RenderDrawLine(&renderer, line.x1, line.y1, line.x2, line.y2);
@@ -246,7 +252,7 @@ void Environment::render(SDL_Renderer & renderer)
 }
 
 /// <summary>
-/// Resizes the grid to.
+/// Resizes the grid to the given parameters and generates the new grid lines
 /// </summary>
 /// <param name="x">The x.</param>
 /// <param name="y">The y.</param>
@@ -261,6 +267,9 @@ void Environment::resizeGridTo(int x, int y, int w, int h)
 	generateGridLines();
 }
 
+/// <summary>
+/// Get the largest value from the heatmap for use in displaying the heatmap gradient
+/// </summary>
 void Environment::createHeatmapVals()
 {
 	int largestElement = m_heatMap[0][0];
@@ -275,7 +284,7 @@ void Environment::createHeatmapVals()
 }
 
 /// <summary>
-/// Adds the obstacle.
+/// Add an obstacle into the grid by toggling the active bit in the flag.
 /// </summary>
 /// <param name="row">The row.</param>
 /// <param name="col">The col.</param>
@@ -284,6 +293,11 @@ void Environment::addObstacle(int row, int col)
 	m_tileFlags[row][col] ^= QLCTileObstacle;
 }
 
+/// <summary>
+/// Adds a goal to the grid and poulates the reward values of neighboring cells actions accordingly.
+/// </summary>
+/// <param name="row">The row.</param>
+/// <param name="col">The col.</param>
 void Environment::addGoal(int row, int col)
 {
 	float rGoal = 100;
@@ -319,6 +333,10 @@ void Environment::addGoal(int row, int col)
 	}
 }
 
+/// <summary>
+/// Return the grid position of all goals in the environment
+/// </summary>
+/// <returns>A vector of goal grid positions (a pair of ints)</returns>
 std::vector<std::pair<int, int>> & Environment::getGoals()
 {
 	return m_goals;
@@ -350,6 +368,9 @@ void Environment::initFlags()
 	}
 }
 
+/// <summary>
+/// Clears the heat map values.
+/// </summary>
 void Environment::clearHeatMap()
 {
 	for (int row = 0; row < stateDim.first; ++row) {
@@ -359,6 +380,12 @@ void Environment::clearHeatMap()
 	}
 }
 
+/// <summary>
+/// Initializes the environment to the specified dimensions
+/// Reinitializes the grid flags and rewards
+/// </summary>
+/// <param name="x">The number of colimns</param>
+/// <param name="y">The number of rows.</param>
 void Environment::init(int x, int y)
 {
 	stateDim = std::make_pair(y, x);
@@ -376,6 +403,11 @@ void Environment::init(int x, int y)
 	generateGridLines();
 }
 
+/// <summary>
+/// Sets the grid tile flag to contain an agent if found and empty the previous tile flag
+/// </summary>
+/// <param name="p">The p.</param>
+/// <param name="c">The c.</param>
 void Environment::setAgentFlags(std::pair<int, int> p, std::pair<int, int> c)
 {
 	auto & prev = m_tileFlags[p.first][p.second];
@@ -389,6 +421,10 @@ void Environment::setAgentFlags(std::pair<int, int> p, std::pair<int, int> c)
 	}
 }
 
+/// <summary>
+/// Returns a vector of all spawnable positions for agents on the grid
+/// </summary>
+/// <returns>All spawnable grid positions available for an agent</returns>
 std::vector<std::pair<int, int>> Environment::getSpawnablePoint()
 {
 	std::vector<std::pair<int, int>> statesToCheck;
@@ -402,34 +438,10 @@ std::vector<std::pair<int, int>> Environment::getSpawnablePoint()
 	return statesToCheck;
 }
 
-std::map<std::pair<int, int>, std::vector<int>> Environment::generateOptimalPolicy()
-{
-	if (!m_goals.empty()) {
-		for (int row = 0; row < stateDim.first; ++row) {
-			for (int col = 0; col < stateDim.second; ++col) {
-				// Get manhattan distance to closest goal
-				// If a tie is present allow all actions to be considered optimal
-				if (!(m_tileFlags[row][col] & QLCTileGoal) && !(m_tileFlags[row][col] & QLCTileObstacle)) {
-					std::pair<int, int> closestGoal = m_goals.at(0);
-					int closestDist = std::abs(closestGoal.first - row) + std::abs(closestGoal.second - col);
-					for (int i = 1; i < m_goals.size(); ++i) {
-						auto & goal = m_goals.at(i);
-						int dist = std::abs(goal.first - row) + std::abs(goal.second - col);
-						if (dist < closestDist) {
-							closestDist = dist;
-							closestGoal = std::make_pair(row, col);
-						}
-					}
-				}
-				else {
-
-				}
-			}
-		}
-	}
-	return std::map<std::pair<int, int>, std::vector<int>>();
-}
-
+/// <summary>
+/// Gets the number of obstacles in the grid (for use with dqn mainly).
+/// </summary>
+/// <returns>Number of obstacles in the grid</returns>
 int Environment::getNumberOfObstacles()
 {
 	int numObstacles = 0;
@@ -442,6 +454,10 @@ int Environment::getNumberOfObstacles()
 	return numObstacles;
 }
 
+/// <summary>
+/// Gets the obstacle in the grids.
+/// </summary>
+/// <returns>A vector of grid positions of all obstacles in the grid</returns>
 std::vector<std::pair<int, int>> Environment::getObstacles()
 {
 	std::vector<std::pair<int, int>> obstacles;

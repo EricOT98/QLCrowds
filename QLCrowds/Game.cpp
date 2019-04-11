@@ -201,25 +201,25 @@ void Game::saveEpisode()
 
 void Game::runAlgorithm()
 {
-	std::ofstream ofs;
-	std::string filepath = "Logs/";
-	auto now = Clock::now();
-	std::time_t now_c = Clock::to_time_t(now);
-	struct tm *parts = std::localtime(&now_c);
-	std::string delim = "";
-	filepath += std::to_string(1900 + parts->tm_year);
-	filepath += delim;
-	filepath += std::to_string(1 + parts->tm_mon);
-	filepath += delim;
-	filepath += std::to_string(parts->tm_mday);
-	filepath += delim;
-	filepath += std::to_string(parts->tm_hour);
-	filepath += delim;
-	filepath += std::to_string(parts->tm_min);
-	filepath += delim;
-	filepath += "Algo.txt";
+	//std::ofstream ofs;
+	//std::string filepath = "Logs/";
+	//auto now = Clock::now();
+	//std::time_t now_c = Clock::to_time_t(now);
+	//struct tm *parts = std::localtime(&now_c);
+	//std::string delim = "";
+	//filepath += std::to_string(1900 + parts->tm_year);
+	//filepath += delim;
+	//filepath += std::to_string(1 + parts->tm_mon);
+	//filepath += delim;
+	//filepath += std::to_string(parts->tm_mday);
+	//filepath += delim;
+	//filepath += std::to_string(parts->tm_hour);
+	//filepath += delim;
+	//filepath += std::to_string(parts->tm_min);
+	//filepath += delim;
+	//filepath += "Algo.txt";
 
-	ofs.open(filepath);
+	//ofs.open(filepath);
 	if (!m_algoStarted) {
 		float currentTime = SDL_GetTicks() / 1000.0f;
 		float timeDif = 0;
@@ -239,6 +239,7 @@ void Game::runAlgorithm()
 		resetAlgorithm();
 		m_algoStarted = true;
 		m_episodeData.clear();
+		env.clearHeatMap();
 
 		for (auto & agent : m_agents) {
 			if (current_item == "Q Learning" || current_item == "RBM") {
@@ -247,6 +248,7 @@ void Game::runAlgorithm()
 		}
 
 		for (int i = 0; i < numEpisodes; ++i) {
+			std::cout << "Episode: " << i << std::endl;
 			std::cout << "=================================================" << std::endl;
 			std::vector<std::vector<EpisodeVals>> episodeData;
 			episodeData.resize(m_agents.size());
@@ -320,14 +322,14 @@ void Game::runAlgorithm()
 			}
 
 			int currentAgent = 0;
-			ofs << i << " ";
+			//ofs << i << " ";
 			for (auto agent : m_agents) {
 				//ofs << i << " " << agent->epsilon << agentVals.at(currentAgent).iter_episode << " " << agentVals.at(currentAgent).reward_episode << " " << agentVals.at(currentAgent).m_numCollisions << std::endl;
 				std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
-				ofs << agentVals.at(currentAgent).reward_episode << " ";
+				//ofs << agentVals.at(currentAgent).reward_episode << " ";
 				currentAgent++;
 			}
-			ofs << std::endl;
+			//ofs << std::endl;
 			if (!m_multiThreaded) {
 				for (int i = 0; i < m_agents.size(); ++i) {
 					plotPoints.at(i).push_back(agentVals.at(i).reward_episode);
@@ -352,8 +354,8 @@ void Game::runAlgorithm()
 		m_algoFinished = true;
 		timeDif = (SDL_GetTicks() / 1000) - currentTime;
 		std::cout << "TD : " << timeDif << std::endl;
-		ofs << "Time Taken: " << timeDif << std::endl;
-		ofs.close();
+		//ofs << "Time Taken: " << timeDif << std::endl;
+		//ofs.close();
 	}
 }
 
@@ -414,6 +416,7 @@ void Game::resetAlgorithm()
 void Game::renderUI()
 {
 	disableInputs = m_algoStarted || m_simulationStarted;
+	ableToRunAlgo = !env.getGoals().empty();
 	// Configuration window
 	ImGui::SetNextWindowPos(confPos);
 	ImGui::SetNextWindowSize(confSize);
@@ -462,22 +465,33 @@ void Game::renderUI()
 		ImGui::InputInt("Num Episodes: ", &numEpisodes, 1, 100, ImGuiWindowFlags_NoMove);
 		ImGui::InputInt("Num Iterations: ", &maxIterations, 1, 100, ImGuiWindowFlags_NoMove);
 		ImGui::SliderFloat("Lerp Percent", &lerpPercent, 0, 1.f, "%.3f");
+		if (!ableToRunAlgo) {
+				ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+		}
 		if (ImGui::Button("Simulation")) {
-			for (auto & agent : m_agents) {
-				agent->m_sprite.setBounds(env.cellW, env.cellH);
+			if (current_item == "Q Learning" || current_item == "RBM" || current_item == "MultiRBM") {
+				for (auto & agent : m_agents) {
+					agent->m_sprite.setBounds(env.cellW, env.cellH);
+				}
+				runAlgorithm();
+				startSimulation();
 			}
-			runAlgorithm();
-			startSimulation();
+			else if (current_item == "JA Q Learning"){
+				runJAQL();
+			}
+			else if (current_item == "DQN") {
+				runAlgoApproximated();
+			}
 		}
 		if (ImGui::Button("Stop Simultation")) {
 			stopSimulation();
 		}
-		if(ImGui::Button("Approximated simulation")) {
-			runAlgoApproximated();
+		if (!ableToRunAlgo) {
+			ImGui::PopItemFlag();
+			ImGui::PopStyleVar();
 		}
-		if (ImGui::Button("JAQL")) {
-			runJAQL();
-		}
+			
 		// Animate a simple progress bar
 		static float progress = 0.0f, progress_dir = 1.0f;
 		//std::cout << currentEpisode << std::endl;
