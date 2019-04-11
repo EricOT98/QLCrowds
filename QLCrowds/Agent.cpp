@@ -186,7 +186,7 @@ int Agent::getActionRBMBased(Environment & env)
 	distr = std::uniform_int_distribution<int>(0, allowedActions.size() - 1);
 	int index = distr(generator);
 	if (std::find(allowedActions.begin(), allowedActions.end(), env.action_dict["none"]) != allowedActions.end()) {
-		std::cout << "None action found" << std::endl;
+		//std::cout << "None action found" << std::endl;
 	}
 	return allowedActions.at(index);
 }
