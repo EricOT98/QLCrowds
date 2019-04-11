@@ -68,6 +68,10 @@ Game::~Game()
 	SDL_Quit();
 }
 
+/// <summary>
+/// Run the update simulation for the game world
+/// </summary>
+/// <param name="deltaTime">difference in time for lerp controls and updates</param>
 void Game::update(float deltaTime)
 {
 	//std::cout << "				Update" << std::endl;
@@ -124,6 +128,9 @@ void Game::update(float deltaTime)
 	}
 }
 
+/// <summary>
+/// Render the game to the sdl render window
+/// </summary>
 void Game::render()
 {
 	SDL_RenderClear(m_renderer);
@@ -137,10 +144,13 @@ void Game::render()
 	SDL_RenderPresent(m_renderer);
 }
 
+/// <summary>
+/// Run the game and gui for simulation
+/// </summary>
 void Game::run()
 {
 	float timeSinceLastUpdate = 0.f;
-	float timePerFrame = 1.f / 1000.f; // 60 fps in ms
+	float timePerFrame = 1.f / 1000.f; // 1000 fps in ms
 	float currentTime = SDL_GetTicks() / 1000.0f;
 	while (!m_quit)
 	{
@@ -155,13 +165,16 @@ void Game::run()
 		while (timeSinceLastUpdate > timePerFrame)
 		{
 			timeSinceLastUpdate -= timePerFrame;
-			processEvents(); // at least 60 fps
-			update(timePerFrame); //60 fps
+			processEvents(); // at least 1000 fps
+			update(timePerFrame); //1000 fps
 		}
 		render(); // as many as possible
 	}
 }
 
+/// <summary>
+/// Process all input for window events
+/// </summary>
 void Game::processEvents()
 {
 	//std::cout << "PE" << std::endl;
@@ -195,31 +208,12 @@ void Game::processEvents()
 	}
 }
 
-void Game::saveEpisode()
-{
-}
-
+/// <summary>
+/// Run the q learning/rbm simulation, for every agent in the simulation do the following
+/// - Get action determined by the policy
+/// </summary>
 void Game::runAlgorithm()
 {
-	//std::ofstream ofs;
-	//std::string filepath = "Logs/";
-	//auto now = Clock::now();
-	//std::time_t now_c = Clock::to_time_t(now);
-	//struct tm *parts = std::localtime(&now_c);
-	//std::string delim = "";
-	//filepath += std::to_string(1900 + parts->tm_year);
-	//filepath += delim;
-	//filepath += std::to_string(1 + parts->tm_mon);
-	//filepath += delim;
-	//filepath += std::to_string(parts->tm_mday);
-	//filepath += delim;
-	//filepath += std::to_string(parts->tm_hour);
-	//filepath += delim;
-	//filepath += std::to_string(parts->tm_min);
-	//filepath += delim;
-	//filepath += "Algo.txt";
-
-	//ofs.open(filepath);
 	if (!m_algoStarted) {
 		float currentTime = SDL_GetTicks() / 1000.0f;
 		float timeDif = 0;
@@ -275,12 +269,15 @@ void Game::runAlgorithm()
 					for (auto agent : m_agents) {
 						if (!agent->m_done) {
 							int action;
+							// Get action from policy
 							if (current_item == "Q Learning")
 								action = agent->getAction(env);
 							else if (current_item == "RBM")
 								action = agent->getActionRBMBased(env);
 							else if (current_item == "MultiRBM")
 								action = agent->getMultiAgentActionRBM(env, agentVals.at(currentAgent).iter_episode, maxIterations);
+
+							// Take one step in the environment
 							auto state_vals = env.step(action, agent->m_currentState);
 							auto state_next = std::get<0>(state_vals);
 							auto reward = std::get<1>(state_vals);
@@ -289,11 +286,14 @@ void Game::runAlgorithm()
 							}
 							bool done = std::get<2>(state_vals);
 							agent->m_previousState = agent->m_currentState;
+
+							// Train the agent to determine q values
 							agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
 							agent->setOrientation(action);
 							agent->m_currentState = state_next;
 							env.setAgentFlags(agent->m_previousState, agent->m_currentState);
 
+							// Log values for the simulation
 							EpisodeVals vals;
 							vals.action = action;
 							vals.state = agent->m_previousState;
@@ -322,14 +322,10 @@ void Game::runAlgorithm()
 			}
 
 			int currentAgent = 0;
-			//ofs << i << " ";
 			for (auto agent : m_agents) {
-				//ofs << i << " " << agent->epsilon << agentVals.at(currentAgent).iter_episode << " " << agentVals.at(currentAgent).reward_episode << " " << agentVals.at(currentAgent).m_numCollisions << std::endl;
 				std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
-				//ofs << agentVals.at(currentAgent).reward_episode << " ";
 				currentAgent++;
 			}
-			//ofs << std::endl;
 			if (!m_multiThreaded) {
 				for (int i = 0; i < m_agents.size(); ++i) {
 					plotPoints.at(i).push_back(agentVals.at(i).reward_episode);
@@ -354,11 +350,12 @@ void Game::runAlgorithm()
 		m_algoFinished = true;
 		timeDif = (SDL_GetTicks() / 1000) - currentTime;
 		std::cout << "TD : " << timeDif << std::endl;
-		//ofs << "Time Taken: " << timeDif << std::endl;
-		//ofs.close();
 	}
 }
 
+/// <summary>
+/// Start the algo simulation
+/// </summary>
 void Game::startSimulation()
 {
 	m_simulationStarted = true;
@@ -368,6 +365,9 @@ void Game::startSimulation()
 	currentPercent = 0;
 }
 
+/// <summary>
+/// Stop the algo simulation
+/// </summary>
 void Game::stopSimulation()
 {
 	m_simulationStarted = false;
@@ -393,6 +393,9 @@ void Game::stopSimulation()
 	disableInputs = false;
 }
 
+/// <summary>
+/// Reset the algo simulation
+/// </summary>
 void Game::resetSimulation()
 {
 	m_simulationStarted = false;
@@ -402,6 +405,9 @@ void Game::resetSimulation()
 	currentPercent = 0;
 }
 
+/// <summary>
+/// Reset all the parameters in the algo
+/// </summary>
 void Game::resetAlgorithm()
 {
 	m_episodeData.clear();
@@ -413,6 +419,9 @@ void Game::resetAlgorithm()
 	}
 }
 
+/// <summary>
+/// Render the imgui based gui
+/// </summary>
 void Game::renderUI()
 {
 	disableInputs = m_algoStarted || m_simulationStarted;
@@ -561,6 +570,9 @@ void Game::renderUI()
 	ImGuiSDL::Render(ImGui::GetDrawData());
 }
 
+/// <summary>
+/// Run the approximated algorithm using a dqn.
+/// </summary>
 void Game::runAlgoApproximated()
 {
 	float currentTime = SDL_GetTicks() / 1000.0f;
@@ -576,6 +588,8 @@ void Game::runAlgoApproximated()
 	resetAlgorithm();
 	m_algoStarted = true;
 
+	float rewardSum = 0;
+	float average = 0;
 	for (int i = 0; i < numEpisodes; ++i) {
 		std::cout << "Episode " << i << "\n";
 		std::cout << "=================================================" << std::endl;
@@ -617,7 +631,6 @@ void Game::runAlgoApproximated()
 					agent->trainReplay();
 
 					agent->m_previousState = agent->m_currentState;
-					//agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
 					agent->m_currentState = state_next;
 					env.setAgentFlags(agent->m_previousState, agent->m_currentState);
 
@@ -658,10 +671,12 @@ void Game::runAlgoApproximated()
 
 		int currentAgent = 0;
 		for (auto agent : m_agents) {
+			rewardSum += agentVals.at(currentAgent).reward_episode;
 			std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
 			currentAgent++;
 		}
 	}
+	average = rewardSum / numEpisodes;
 	// Display the final policy
 	for (auto agent : m_agents) {
 		std::cout << "Agent: " << std::endl;
@@ -673,6 +688,9 @@ void Game::runAlgoApproximated()
 	std::cout << "TD : " << timeDif << std::endl;
 }
 
+/// <summary>
+/// Run jaql algorithm
+/// </summary>
 void Game::runJAQL()
 {
 	float beta = 0.99f;
@@ -712,10 +730,6 @@ void Game::runJAQL()
 			Q.insert(std::make_pair(js, ja));
 		}
 	}
-
-	/// <summary>
-	/// /////////
-	/// </summary>
 	float currentTime = SDL_GetTicks() / 1000.0f;
 	float timeDif = 0;
 	m_agentDone.clear();
@@ -819,6 +833,10 @@ void Game::runJAQL()
 	std::cout << "TD : " << timeDif << std::endl;
 }
 
+/// <summary>
+/// Get a joint action determined by the JAQ policy 
+/// </summary>
+/// <returns></returns>
 std::pair<int, int> Game::getJAQAction()
 {
 	std::random_device rand_dev;
@@ -827,6 +845,7 @@ std::pair<int, int> Game::getJAQAction()
 	double randVal = distr(generator);
 
 	if (randVal < agentEpsilon) {
+		// Generate random allowed actions
 		auto actions_allowed = env.allowedActions(m_agents.at(0)->m_currentState);
 		std::uniform_int_distribution<int>  distr(0, actions_allowed.size() - 1);
 		int index = distr(generator);
@@ -839,6 +858,7 @@ std::pair<int, int> Game::getJAQAction()
 		return actions;
 	}
 	else {
+		// Determine best joint action state
 		std::vector<State> currentStates{ m_agents.at(0)->m_currentState, m_agents.at(1)->m_currentState };
 		auto actionValues = Q[currentStates];
 
