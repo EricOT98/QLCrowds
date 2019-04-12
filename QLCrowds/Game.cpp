@@ -104,13 +104,19 @@ void Game::update(float deltaTime)
 						int currentH = h * state.first;
 						int nextW = w * nextState.second;
 						int nextH = h * nextState.first;
-						agent->m_sprite.setPosition(mu::lerp(currentW, nextW, m_lerpPercentages.at(i)), mu::lerp(currentH, nextH, m_lerpPercentages.at(i)));
+						agent->setPosition(mu::lerp(currentW, nextW, m_lerpPercentages.at(i)), mu::lerp(currentH, nextH, m_lerpPercentages.at(i)));
 						if (!m_agentLerping.at(i)) {
 							m_agentIterations.at(i) += 1;
-							//std::cout << "Iter" << std::endl;
 							m_lerpPercentages.at(i) = 0.0f;
 							m_agentLerping.at(i) = true;
-							// TODO set agent orientation here
+							if ( m_agentIterations.at(i) < episode.size())
+								data = episode.at(m_agentIterations.at(i));
+							auto actionPair = std::make_pair(data.nextState.first - data.state.first, data.nextState.second - data.state.second);
+							for (int i = 0; i < env.action_dict.size(); ++i) {
+								if (actionPair.first == env.actionCoords[i].first && actionPair.second == env.actionCoords[i].second) {
+									agent->setOrientation(i);
+								}
+							}
 						}
 					}
 					else {
@@ -197,8 +203,9 @@ void Game::processEvents()
 		case SDL_MOUSEBUTTONDOWN: {
 			int x = m_event.button.x;
 			int y = m_event.button.y;
-			if (x > env.gridPosX && x < env.gridPosX + (env.cellW * env.stateDim.second)
-				&& y > env.gridPosY && y < env.gridPosY + (env.cellH * env.stateDim.first)) {
+			auto stateDim = env.getStateDim();
+			if (x > env.gridPosX && x < env.gridPosX + (env.cellW * stateDim.second)
+				&& y > env.gridPosY && y < env.gridPosY + (env.cellH * stateDim.first)) {
 				if (m_event.button.button == SDL_BUTTON_LEFT) {
 					env.addObstacle(y / env.cellH, x / env.cellW);
 				}
@@ -295,7 +302,6 @@ void Game::runAlgorithm()
 
 							// Train the agent to determine q values
 							agent->train(std::make_tuple(agent->m_currentState, action, state_next, reward, done));
-							agent->setOrientation(action);
 							agent->m_currentState = state_next;
 							env.setAgentFlags(agent->m_previousState, agent->m_currentState);
 
@@ -324,12 +330,12 @@ void Game::runAlgorithm()
 					break;
 			}
 			for (auto agent : m_agents) {
-				agent->epsilon = std::fmax(agent->epsilon * agent->epsilonDecay, 0.01);
+				agent->m_epsilon = std::fmax(agent->m_epsilon * agent->m_epsilonDecay, 0.01);
 			}
 
 			int currentAgent = 0;
 			for (auto agent : m_agents) {
-				std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
+				std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->m_epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
 				currentAgent++;
 			}
 			if (!m_multiThreaded) {
@@ -466,9 +472,10 @@ void Game::renderUI()
 			mapUI();
 			env.init(env.xSize, env.ySize);
 			for (auto & agent : m_agents) {
-				agent->m_sprite.setBounds(env.cellW, env.cellH);
+				agent->setSize(env.cellW, env.cellH);
 			}
-			minIterations = env.stateDim.first + env.stateDim.second - 2;
+			auto stateDim = env.getStateDim();
+			minIterations = stateDim.first + stateDim.second - 2;
 			if (maxIterations < minIterations)
 				maxIterations = minIterations;
 		}
@@ -487,7 +494,7 @@ void Game::renderUI()
 		if (ImGui::Button("Simulation")) {
 			if (current_item == "Q Learning" || current_item == "RBM" || current_item == "MultiRBM") {
 				for (auto & agent : m_agents) {
-					agent->m_sprite.setBounds(env.cellW, env.cellH);
+					agent->setSize(env.cellW, env.cellH);
 				}
 				runAlgorithm();
 				startSimulation();
@@ -538,7 +545,7 @@ void Game::renderUI()
 			int currentAgent = 0;
 			for (auto & agent : m_agents) {
 				if (ImGui::TreeNode((void*)(intptr_t)currentAgent, "Agent %d", currentAgent)) {
-					ImGui::SliderFloat("Learning Rate:", &agent->beta, 0, 1.f, "%.3f");
+					ImGui::SliderFloat("Learning Rate:", &agent->m_beta, 0, 1.f, "%.3f");
 					ImGui::TreePop();
 				}
 				currentAgent++;
@@ -586,9 +593,7 @@ void Game::runAlgoApproximated()
 	m_agents.clear();
 	for (int i = 0; i < m_numAgents; ++i) {
 		m_agents.push_back(new Agent(env, m_renderer));
-		m_agents.at(i)->model = m_agents.at(i)->buildModel();
-		std::cout << "Building Target Model" << std::endl;
-		m_agents.at(i)->targetModel = m_agents.at(i)->buildModel();
+		m_agents.at(i)->initModels();
 	}
 	agentSelected = 0;
 	resetAlgorithm();
@@ -672,13 +677,13 @@ void Game::runAlgoApproximated()
 		}
 
 		for (auto agent : m_agents) {
-			agent->epsilon = std::fmax(agent->epsilon * agent->epsilonDecay, 0.01);
+			agent->m_epsilon = std::fmax(agent->m_epsilon * agent->m_epsilonDecay, 0.01);
 		}
 
 		int currentAgent = 0;
 		for (auto agent : m_agents) {
 			rewardSum += agentVals.at(currentAgent).reward_episode;
-			std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
+			std::cout << "Episode: " << i << " /" << numEpisodes << " Eps: " << agent->m_epsilon << " iter: " << agentVals.at(currentAgent).iter_episode << " Rew: " << agentVals.at(currentAgent).reward_episode << " Num Cols: " << agentVals.at(currentAgent).m_numCollisions << std::endl;
 			currentAgent++;
 		}
 	}
@@ -707,19 +712,21 @@ void Game::runJAQL()
 		m_agents.push_back(new Agent(env, m_renderer));
 	}
 	int n = m_agents.size();
-	int numStates = env.stateDim.first * env.stateDim.second;
+	auto stateDim = env.getStateDim();
+	auto actionDim = env.getActionDim();
+	int numStates = stateDim.first * stateDim.second;
 	int numJointStates = pow((double)numStates, n);
-	int numJointActions = pow((double)env.actionDim.first, n);
+	int numJointActions = pow((double)actionDim.first, n);
 	jointAction ja;
-	for (int i = 0; i < env.actionDim.first; ++i) {
-		for (int j = 0; j < env.actionDim.first; ++j) {
+	for (int i = 0; i < actionDim.first; ++i) {
+		for (int j = 0; j < actionDim.first; ++j) {
 			ja.insert(std::make_pair(std::make_pair(i, j), 0));
 		}
 	}
 	
 	std::vector<std::pair<int, int>> states;
-	for (int row = 0; row < env.stateDim.first; ++row) {
-		for (int col = 0; col < env.stateDim.second; ++col) {
+	for (int row = 0; row < stateDim.first; ++row) {
+		for (int col = 0; col < stateDim.second; ++col) {
 			states.push_back(std::make_pair(row, col));
 		}
 	}
@@ -815,7 +822,7 @@ void Game::runJAQL()
 			auto maxVal = maxElement.second;
 			Q[jointStates][action] += beta * (reward + gamma * maxVal - sa);
 		}
-		agentEpsilon = std::fmax(agentEpsilon * m_agents.at(0)->epsilonDecay, 0.01);
+		agentEpsilon = std::fmax(agentEpsilon * m_agents.at(0)->m_epsilonDecay, 0.01);
 
 		int currentAgent = 0;
 		for (auto agent : m_agents) {
@@ -985,8 +992,9 @@ void Game::mapUI()
 	envSize.x = (m_windowWidth / 5) * 3;
 	envSize.y = (m_windowHeight / 5) * 3;
 	env.resizeGridTo(envPos.x, envPos.y, envSize.x, envSize.y);
-	int actualGridW = env.cellW * env.stateDim.second;
-	int actualGridH = env.cellH * env.stateDim.first;
+	auto stateDim = env.getStateDim();
+	int actualGridW = env.cellW * stateDim.second;
+	int actualGridH = env.cellH * stateDim.first;
 
 	confPos.x = 1;
 	confPos.y = actualGridH + 1;

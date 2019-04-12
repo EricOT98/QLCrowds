@@ -32,12 +32,12 @@ void Environment::buildRewards()
 {
 	float rGoal = 100;
 	float rNonGoal = -0.1f;
-	R.resize(stateDim.first);
+	R.resize(m_stateDim.first);
 	for (int row = 0; row < ySize; ++row) {
-		R.at(row).resize(stateDim.second);
+		R.at(row).resize(m_stateDim.second);
 		for (int col = 0; col < xSize; ++col) {
-			R.at(row).at(col).resize(actionDim.first);
-			for (int a = 0; a < actionDim.first; ++a) {
+			R.at(row).at(col).resize(m_actionDim.first);
+			for (int a = 0; a < m_actionDim.first; ++a) {
 				R[row][col][a] = rNonGoal;
 			}
 		}
@@ -137,7 +137,7 @@ std::vector<int> Environment::allowedActions(const std::pair<int, int> & state)
 		if (!(upFlags & QLCTileObstacle))
 			allowed.push_back(action_dict["up"]);
 	}
-	if (row < stateDim.first - 1) {
+	if (row < m_stateDim.first - 1) {
 		auto & downFlags = m_tileFlags[row + 1][col];
 		if (!(downFlags & QLCTileObstacle))
 			allowed.push_back(action_dict["down"]);
@@ -147,7 +147,7 @@ std::vector<int> Environment::allowedActions(const std::pair<int, int> & state)
 		if (!(leftFlags & QLCTileObstacle))
 			allowed.push_back(action_dict["left"]);
 	}
-	if (col < stateDim.second - 1) {
+	if (col < m_stateDim.second - 1) {
 		auto & rightFlags = m_tileFlags[row][col + 1];
 		if (!(rightFlags & QLCTileObstacle))
 			allowed.push_back(action_dict["right"]);
@@ -162,8 +162,8 @@ std::pair<int, int>Environment::getClosestAgent(const std::pair<int, int>& state
 	std::pair<int, int> closestAgentState;
 
 	// Iterate over all spaces if it contains an agent compare distance
-	for (int row = 0; row < stateDim.first; ++row) {
-		for (int col = 0; col < stateDim.second; ++col) {
+	for (int row = 0; row < m_stateDim.first; ++row) {
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			if (row != state.first && col != state.second) {
 				if (m_tileFlags[row][col] & QLCContainsAgent) {
 					if (closestAgentState.first && closestAgentState.second) {
@@ -186,28 +186,28 @@ std::pair<int, int>Environment::getClosestAgent(const std::pair<int, int>& state
 /// </summary>
 void Environment::generateGridLines()
 {
-	cellW = floor(width / (float)stateDim.second);
-	cellH = floor(height / (float)stateDim.first);
-	gridLines.clear();
-	int endPosX = gridPosX + (stateDim.second * cellW);
-	for (int row = 0; row <= stateDim.first; ++row) {
+	cellW = floor(width / (float)m_stateDim.second);
+	cellH = floor(height / (float)m_stateDim.first);
+	m_gridLines.clear();
+	int endPosX = gridPosX + (m_stateDim.second * cellW);
+	for (int row = 0; row <= m_stateDim.first; ++row) {
 		int yPos = gridPosY + (row * cellH);
 		Line l;
 		l.x1 = gridPosX;
 		l.y1 = yPos;
 		l.x2 = endPosX;
 		l.y2 = yPos;
-		gridLines.push_back(l);
+		m_gridLines.push_back(l);
 	}
-	int endPosY = gridPosY + (stateDim.first * cellH);
-	for (int col = 0; col <= stateDim.second; ++col) {
+	int endPosY = gridPosY + (m_stateDim.first * cellH);
+	for (int col = 0; col <= m_stateDim.second; ++col) {
 		int xPos = gridPosX + (col * cellW);
 		Line l;
 		l.x1 = xPos;
 		l.y1 = gridPosY;
 		l.x2 = xPos;
 		l.y2 = endPosY;
-		gridLines.push_back(l);
+		m_gridLines.push_back(l);
 	}
 }
 
@@ -218,16 +218,16 @@ void Environment::generateGridLines()
 void Environment::render(SDL_Renderer & renderer)
 {
 	SDL_SetRenderDrawColor(&renderer, 255, 0, 0, 255);
-	for (auto & line : gridLines) {
+	for (auto & line : m_gridLines) {
 		SDL_RenderDrawLine(&renderer, line.x1, line.y1, line.x2, line.y2);
 	}
 	SDL_Rect rect;
 	rect.w = cellW - 1;
 	rect.h = cellH - 1;
 
-	for (int row = 0; row < stateDim.first; ++row) {
+	for (int row = 0; row < m_stateDim.first; ++row) {
 		rect.y = gridPosY + (row * cellH) + 1;
-		for (int col = 0; col < stateDim.second; ++col) {
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			rect.x = gridPosX + (col * cellW) + 1;
 			SDL_Color colour = { 0,0,0, 255 };
 			if (m_tileFlags[row][col] & QLCTileGoal)
@@ -273,8 +273,8 @@ void Environment::resizeGridTo(int x, int y, int w, int h)
 void Environment::createHeatmapVals()
 {
 	int largestElement = m_heatMap[0][0];
-	for (int row = 0; row < stateDim.first; ++row) {
-		for (int col = 0; col < stateDim.second; ++col) {
+	for (int row = 0; row < m_stateDim.first; ++row) {
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			if (m_heatMap[row][col] > largestElement) {
 				largestElement = m_heatMap[row][col];
 			}
@@ -359,10 +359,10 @@ void Environment::resetFlags()
 /// </summary>
 void Environment::initFlags()
 {
-	m_tileFlags.resize(stateDim.first);
-	for (int row = 0; row < stateDim.first; ++row) {
-		m_tileFlags[row].resize(stateDim.second);
-		for (int col = 0; col < stateDim.second; ++col) {
+	m_tileFlags.resize(m_stateDim.first);
+	for (int row = 0; row < m_stateDim.first; ++row) {
+		m_tileFlags[row].resize(m_stateDim.second);
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			m_tileFlags[row][col] |= QLCTileEMPTY;
 		}
 	}
@@ -373,8 +373,8 @@ void Environment::initFlags()
 /// </summary>
 void Environment::clearHeatMap()
 {
-	for (int row = 0; row < stateDim.first; ++row) {
-		for (int col = 0; col < stateDim.second; ++col) {
+	for (int row = 0; row < m_stateDim.first; ++row) {
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			m_heatMap[row][col] = 0;
 		}
 	}
@@ -388,13 +388,13 @@ void Environment::clearHeatMap()
 /// <param name="y">The number of rows.</param>
 void Environment::init(int x, int y)
 {
-	stateDim = std::make_pair(y, x);
-	actionDim = std::make_pair(5, 0);
+	m_stateDim = std::make_pair(y, x);
+	m_actionDim = std::make_pair(5, 0);
 	m_heatMap.clear();
-	m_heatMap.resize(stateDim.first);
-	for (int row = 0; row < stateDim.first; ++row) {
-		m_heatMap.at(row).resize(stateDim.second);
-		for (int col = 0; col < stateDim.second; ++col) {
+	m_heatMap.resize(m_stateDim.first);
+	for (int row = 0; row < m_stateDim.first; ++row) {
+		m_heatMap.at(row).resize(m_stateDim.second);
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			m_heatMap[row][col] = 0;
 		}
 	}
@@ -428,8 +428,8 @@ void Environment::setAgentFlags(std::pair<int, int> p, std::pair<int, int> c)
 std::vector<std::pair<int, int>> Environment::getSpawnablePoint()
 {
 	std::vector<std::pair<int, int>> statesToCheck;
-	for (int row = 0; row < stateDim.first; ++row) {
-		for (int col = 0; col < stateDim.second; ++col) {
+	for (int row = 0; row < m_stateDim.first; ++row) {
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			auto & flags = m_tileFlags[row][col];
 			if (!(flags& QLCTileGoal || flags & QLCTileObstacle || flags & QLCContainsAgent))
 				statesToCheck.push_back(std::make_pair(row, col));
@@ -445,8 +445,8 @@ std::vector<std::pair<int, int>> Environment::getSpawnablePoint()
 int Environment::getNumberOfObstacles()
 {
 	int numObstacles = 0;
-	for (int row = 0; row < stateDim.first; ++row) {
-		for (int col = 0; col < stateDim.second; ++col) {
+	for (int row = 0; row < m_stateDim.first; ++row) {
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			if (m_tileFlags[row][col] & QLCTileObstacle)
 				numObstacles++;
 		}
@@ -461,11 +461,21 @@ int Environment::getNumberOfObstacles()
 std::vector<std::pair<int, int>> Environment::getObstacles()
 {
 	std::vector<std::pair<int, int>> obstacles;
-	for (int row = 0; row < stateDim.first; ++row) {
-		for (int col = 0; col < stateDim.second; ++col) {
+	for (int row = 0; row < m_stateDim.first; ++row) {
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			if (m_tileFlags[row][col] & QLCTileObstacle)
 				obstacles.push_back(std::make_pair(row, col));
 		}
 	}
 	return obstacles;
+}
+
+std::pair<int, int> Environment::getStateDim()
+{
+	return m_stateDim;
+}
+
+std::pair<int, int> Environment::getActionDim()
+{
+	return m_actionDim;
 }

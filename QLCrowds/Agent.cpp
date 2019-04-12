@@ -9,14 +9,14 @@
 Agent::Agent(Environment &env, SDL_Renderer * renderer) :
 	m_env(env)
 {
-	stateDim = std::make_pair(env.ySize, env.xSize);
-	actionDim = env.actionDim;
-	Q.resize(stateDim.first);
-	for (int row = 0; row < stateDim.first; ++row) {
-		Q.at(row).resize(stateDim.second);
-		for (int col = 0; col < stateDim.second; ++col) {
-			Q.at(row).at(col).resize(actionDim.first);
-			for (int action = 0; action < actionDim.first; ++action) {
+	m_stateDim = std::make_pair(env.ySize, env.xSize);
+	m_actionDim = env.getActionDim();
+	Q.resize(m_stateDim.first);
+	for (int row = 0; row < m_stateDim.first; ++row) {
+		Q.at(row).resize(m_stateDim.second);
+		for (int col = 0; col < m_stateDim.second; ++col) {
+			Q.at(row).at(col).resize(m_actionDim.first);
+			for (int action = 0; action < m_actionDim.first; ++action) {
 				Q[row][col][action] = 0;
 			}
 		}
@@ -37,7 +37,7 @@ int Agent::getAction(Environment & env)
 	std::mt19937 generator(rand_dev());
 	std::uniform_real_distribution<double> distr(0, 1);
 	double randVal = distr(generator);
-	if (randVal < epsilon) {
+	if (randVal < m_epsilon) {
 		auto actions_allowed = env.allowedActions(m_currentState);
 		if (m_backTracking) {
 			if (actions_allowed.size() > 1) {
@@ -132,7 +132,7 @@ void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, floa
 	auto nextActions = Q[state_next.first][state_next.second];
 
 	auto maxElement = *std::max_element(nextActions.begin(), nextActions.end());
-	Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - sa);
+	Q[state.first][state.second][action] += m_beta * (reward + m_gamma * maxElement - sa);
 }
 
 /// <summary>
@@ -341,12 +341,12 @@ tiny_dnn::network<tiny_dnn::sequential> Agent::buildModel()
 
 	// FC is equivalent of Keras dense
 	std::cout << "Build Model" << std::endl;
-	inputLayer = 2 + (2 * (numGoals + numObs));
-	outputLayer = 5;
-	hiddenLayer = ceil(sqrt(inputLayer * outputLayer));
+	m_inputLayer = 2 + (2 * (numGoals + numObs));
+	m_outputLayer = 5;
+	m_hiddenLayer = ceil(sqrt(m_inputLayer * m_outputLayer));
 	test_nn
-		<< fully_connected_layer(inputLayer, hiddenLayer, true) << relu()
-		<< fully_connected_layer(hiddenLayer, outputLayer, true) << softmax();
+		<< fully_connected_layer(m_inputLayer, m_hiddenLayer, true) << relu()
+		<< fully_connected_layer(m_hiddenLayer, m_outputLayer, true) << softmax();
 	for (int i = 0; i < test_nn.depth(); i++) {
 		std::cout << "#layer:" << i << "\n";
 		std::cout << "layer type:" << test_nn[i]->layer_type() << "\n";
@@ -364,7 +364,7 @@ tiny_dnn::network<tiny_dnn::sequential> Agent::buildModel()
 /// </summary>
 void Agent::updateTargetModel()
 {
-	targetModel = model;
+	m_targetModel = m_model;
 }
 
 /// <summary>
@@ -385,11 +385,11 @@ void Agent::replayMemory(AgentMemoryBatch memory)
 /// </summary>
 void Agent::trainReplay()
 {
-	if (m_memory.size() < trainStart) {
+	if (m_memory.size() < m_trainStart) {
 		// No full batch preset so do nothing
 	}
 	else {
-		int bs = std::min(batchSize, (int)m_memory.size());
+		int bs = std::min(m_batchSize, (int)m_memory.size());
 		auto memoryCopy = m_memory;
 		std::random_shuffle(memoryCopy.begin(), memoryCopy.end());
 		std::vector<AgentMemoryBatch> miniBatch;
@@ -399,11 +399,11 @@ void Agent::trainReplay()
 
 		std::vector<tiny_dnn::vec_t> updateInput;
 		std::vector<tiny_dnn::vec_t> updateTarget;
-		updateInput.resize(batchSize);
-		updateTarget.resize(batchSize);
-		for (int batch = 0; batch < batchSize; ++batch) {
-			updateInput.at(batch).resize(inputLayer);
-			updateTarget.at(batch).resize(outputLayer);
+		updateInput.resize(m_batchSize);
+		updateTarget.resize(m_batchSize);
+		for (int batch = 0; batch < m_batchSize; ++batch) {
+			updateInput.at(batch).resize(m_inputLayer);
+			updateTarget.at(batch).resize(m_outputLayer);
 			for (auto & input : updateInput.at(batch)) {
 				input = 0;
 			}
@@ -419,7 +419,7 @@ void Agent::trainReplay()
 			// Get the state items
 			auto goals = m_env.getGoals();
 			auto obstacles = m_env.getObstacles();
-
+			// Convert environment values into input for neural net
 			states.push_back(currentMemory.state.first);
 			states.push_back(currentMemory.state.second);
 			for (auto & goal : goals) {
@@ -430,12 +430,13 @@ void Agent::trainReplay()
 				states.push_back(currentMemory.state.first - obs.first);
 				states.push_back(currentMemory.state.second - obs.second);
 			}
-			tiny_dnn::vec_t target = model.predict(states);
+			// Run a prediction
+			tiny_dnn::vec_t target = m_model.predict(states);
 
 			if (m_done)
 				target[currentMemory.action] = currentMemory.reward;
 			else {
-				//Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - sa);
+				// Convert environment values into input for neural net
 				tiny_dnn::vec_t next_states;
 				next_states.push_back(currentMemory.nextState.first);
 				next_states.push_back(currentMemory.nextState.second);
@@ -447,11 +448,13 @@ void Agent::trainReplay()
 					next_states.push_back(currentMemory.nextState.first - obs.first);
 					next_states.push_back(currentMemory.nextState.second - obs.second);
 				}
-				auto predicted = model.predict(next_states);
+				// Run a prediction
+				auto predicted = m_model.predict(next_states);
+				// Get the max Element
 				auto maxElement = *std::max_element(predicted.begin(), predicted.end());
-
-				auto val = currentMemory.reward + ((tiny_dnn::float_t)gamma * maxElement);
-				for (int i = 0; i < outputLayer; ++i) {
+				//Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - sa);
+				auto val = currentMemory.reward + ((tiny_dnn::float_t)m_gamma * maxElement);
+				for (int i = 0; i < m_outputLayer; ++i) {
 					target[i] = val;
 				}
 			}
@@ -460,9 +463,8 @@ void Agent::trainReplay()
 			updateTarget[i] = target;
 		}
 		tiny_dnn::adam opt;
-		
-		model.fit<tiny_dnn::mse>(opt, updateInput, updateTarget, batchSize, 1);
-		//std::cout << "Loss" << model.get_loss<tiny_dnn::mse>(updateInput, updateTarget) << std::endl;;
+		// Train the model
+		m_model.fit<tiny_dnn::mse>(opt, updateInput, updateTarget, m_batchSize, 1);
 	}
 }
 
@@ -472,13 +474,13 @@ void Agent::trainReplay()
 void Agent::resizeQTable()
 {
 	Q.clear();
-	stateDim = m_env.stateDim;
-	actionDim = m_env.actionDim;
-	for (int row = 0; row < stateDim.first; ++row) {
+	m_stateDim = m_env.getStateDim();
+	m_actionDim = m_env.getActionDim();
+	for (int row = 0; row < m_stateDim.first; ++row) {
 		std::vector<std::vector<float>> newRow;
-		for (int col = 0; col < stateDim.second; ++col) {
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			std::vector<float> actions;
-			for (int a = 0; a < actionDim.first; ++a) {
+			for (int a = 0; a < m_actionDim.first; ++a) {
 				actions.push_back(0);
 			}
 			newRow.push_back(actions);
@@ -492,8 +494,14 @@ void Agent::resizeQTable()
 /// </summary>
 void Agent::resizeStates()
 {
-	stateDim = m_env.stateDim;
-	actionDim = m_env.actionDim;
+	m_stateDim = m_env.getStateDim();
+	m_actionDim = m_env.getActionDim();
+}
+
+void Agent::initModels()
+{
+	m_model = buildModel();
+	m_targetModel = buildModel();
 }
 
 /// <summary>
@@ -506,11 +514,11 @@ void Agent::displayGreedyPolicy(Environment & env)
 	std::vector<std::string> action_dict = { "u", "r", "d", "l", "n" };
 
 	std::vector<std::vector<std::string>> greedyPolicy;
-	greedyPolicy.resize(stateDim.first);
-	for (int row = 0; row < stateDim.first; ++row) {
+	greedyPolicy.resize(m_stateDim.first);
+	for (int row = 0; row < m_stateDim.first; ++row) {
 		std::cout << "[";
-		greedyPolicy.at(row).resize(stateDim.second);
-		for (int col = 0; col < stateDim.second; ++col) {
+		greedyPolicy.at(row).resize(m_stateDim.second);
+		for (int col = 0; col < m_stateDim.second; ++col) {
 			if (env.m_tileFlags[row][col] & QLCTileGoal) {
 				greedyPolicy[row][col] = "g";
 			}
@@ -541,13 +549,13 @@ void Agent::displayGreedyPolicy(Environment & env)
 /// </summary>
 void Agent::reset()
 {
-	epsilon = 1.f;
-	epsilonDecay = 0.99f;
+	m_epsilon = 1.f;
+	m_epsilonDecay = 0.99f;
 	//beta = 0.99f; // Disable this to allow defining learning rates
-	gamma = 0.99f;
-	for (int row = 0; row < stateDim.first; ++row) {
-		for (int col = 0; col < stateDim.second; ++col) {
-			for (int action = 0; action < actionDim.first; ++action) {
+	m_gamma = 0.99f;
+	for (int row = 0; row < m_stateDim.first; ++row) {
+		for (int col = 0; col < m_stateDim.second; ++col) {
+			for (int action = 0; action < m_actionDim.first; ++action) {
 				Q[row][col][action] = 0;
 			}
 		}
@@ -563,13 +571,13 @@ void Agent::setOrientation(int action)
 	switch (action)
 	{
 	case 0:
-		m_angle = 90;
+		m_angle = -90;
 		break;
 	case 1:
 		m_angle = 0;
 		break;
 	case 2:
-		m_angle = 270;
+		m_angle = 90;
 		break;
 	case 3:
 		m_angle = 180;
@@ -587,4 +595,14 @@ void Agent::setOrientation(int action)
 void Agent::render(SDL_Renderer & renderer)
 {
 	m_sprite.render(&renderer, m_angle);
+}
+
+void Agent::setPosition(float x, float y)
+{
+	m_sprite.setPosition(x, y);
+}
+
+void Agent::setSize(float w, float h)
+{
+	m_sprite.setBounds(w, h);
 }

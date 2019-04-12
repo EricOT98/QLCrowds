@@ -31,9 +31,6 @@ public:
 	int width = 0;
 	int height = 0;
 
-	std::pair<int, int> stateDim;
-	std::pair<int, int> actionDim;
-
 	// ML related members
 	std::vector<std::pair<int, int>> m_states;
 	std::map<std::string, int> action_dict;
@@ -47,15 +44,13 @@ public:
 	int gridPosY = 0;
 	int cellW = 32;
 	int cellH = 32;
-	std::vector<Line> gridLines;
 	std::vector<std::vector<int>> m_heatMap;
 	int m_largestHeatMapVal;
 
 	// Member function
 	Environment();
 	~Environment();
-	
-	void buildRewards();
+
 	std::tuple<std::pair<int, int>, float, bool> step(int action, std::pair<int, int> & state);
 	std::tuple<std::vector<State>, float, bool> stepJAQL(std::vector<int> & actions, std::vector<State> & states);
 	void reset();
@@ -80,7 +75,17 @@ public:
 	std::vector<std::pair<int, int>> getSpawnablePoint();
 	int getNumberOfObstacles();
 	std::vector<std::pair<int, int>> getObstacles();
+
+	// Getters
+	std::pair<int, int> getStateDim();
+	std::pair<int, int> getActionDim();
 protected:
+	// State rep
+	std::pair<int, int> m_stateDim;
+	std::pair<int, int> m_actionDim;
+
+	std::vector<Line> m_gridLines;
+	void buildRewards();
 	std::vector<std::pair<int, int>> m_goals;
 	struct Line {
 		int x1;

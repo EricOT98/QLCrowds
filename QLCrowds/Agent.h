@@ -26,13 +26,13 @@ public:
 	Agent(Environment & env, SDL_Renderer * renderer);
 	~Agent();
 
-	std::pair<int, int> stateDim;
-	std::pair<int, int> actionDim;
+	std::pair<int, int> m_stateDim;
+	std::pair<int, int> m_actionDim;
 
-	float epsilon = 1.f;			// Initial exploration prob
-	float epsilonDecay = 0.9999f;		//Epsilon decay after each episode
-	float beta = 0.99f;				// Learning Rate
-	float gamma = 0.99f;			//DIscount factor
+	float m_epsilon = 1.f;			// Initial exploration prob
+	float m_epsilonDecay = 0.9999f;	// Epsilon decay after each episode
+	float m_beta = 0.99f;				// Learning Rate
+	float m_gamma = 0.99f;			// Discount factor
 
 	std::vector<std::vector<std::vector<float>>> Q; //Q Table for action state coupling
 	bool m_done = false;
@@ -54,22 +54,12 @@ public:
 	void train(std::tuple<std::pair<int,int>, int, std::pair<int, int>, float, bool> t);
 	
 	// NN function approximator work
-	int trainStart = 100;
-	int batchSize = 32;
-	tiny_dnn::network<tiny_dnn::sequential> model;
-	tiny_dnn::network<tiny_dnn::sequential> targetModel;
-	tiny_dnn::network<tiny_dnn::sequential> buildModel();
 	void updateTargetModel();
 	void replayMemory(AgentMemoryBatch memory);
 	void trainReplay();
 	void resizeQTable();
 	void resizeStates();
-
-	std::deque<AgentMemoryBatch> m_memory;
-	int maxMemorySize = 1000;
-	int inputLayer;
-	int outputLayer;
-	int hiddenLayer;
+	void initModels();
 
 	// Debug functions
 	void displayGreedyPolicy(Environment & env);
@@ -77,9 +67,28 @@ public:
 	// Render functions
 	void setOrientation(int action);
 	void render(SDL_Renderer & renderer);
+	
+
+	// Setters
+	void setPosition(float x, float y);
+	void setSize(float w, float h);
+private:
+	// NN approximator work
+	tiny_dnn::network<tiny_dnn::sequential> m_model;
+	tiny_dnn::network<tiny_dnn::sequential> m_targetModel;
+	int m_inputLayer;
+	int m_outputLayer;
+	int m_hiddenLayer;
+
+	tiny_dnn::network<tiny_dnn::sequential> buildModel();
+
+	int m_trainStart = 100;
+	int m_batchSize = 32;
+	int maxMemorySize = 1000;
+	std::deque<AgentMemoryBatch> m_memory;
+
 	Sprite m_sprite;
 	Environment & m_env;
-private:
 	// Rendering
 	int m_angle = 0;
 };
