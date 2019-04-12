@@ -48,11 +48,10 @@ public:
 	// Action functions
 	int getAction(Environment & env);
 	int getActionRBMBased(Environment & env);
-	int getMultiAgentAction(Environment & env);
 	int getMultiAgentActionRBM(Environment & env, int currentIter, const int maxIters);
 
+	// Learning function
 	void train(std::tuple<std::pair<int,int>, int, std::pair<int, int>, float, bool> t);
-	void trainRBM(std::tuple<std::pair<int, int>, int, std::pair<int, int>, float, bool> t);
 	
 	// NN function approximator work
 	int trainStart = 100;

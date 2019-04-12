@@ -9,6 +9,9 @@
 
 typedef std::chrono::system_clock Clock;
 
+/// <summary>
+/// Default game constructor for building the simulation
+/// </summary>
 Game::Game()
 {
 	m_window = NULL;
@@ -58,6 +61,9 @@ Game::Game()
 	}
 }
 
+/// <summary>
+/// Deconstruct the game environment
+/// </summary>
 Game::~Game()
 {
 	ImGuiSDL::Deinitialize();
@@ -893,6 +899,9 @@ std::pair<int, int> Game::getJAQAction()
 	}
 }
 
+/// <summary>
+/// Set the imgui cherry theme style
+/// </summary>
 void Game::cherryTheme()
 {
 			// cherry colors, 3 intensities
@@ -966,6 +975,9 @@ void Game::cherryTheme()
 	style.WindowBorderSize = 1.0f;
 }
 
+/// <summary>
+/// Map the simulation UI to the screen size
+/// </summary>
 void Game::mapUI()
 {
 	envPos.x = 0;
@@ -987,6 +999,13 @@ void Game::mapUI()
 	algoSize.y = m_windowHeight - 1;
 }
 
+/// <summary>
+/// Multithreaded agent simulation
+/// </summary>
+/// <param name="agent">Pointer to the agent to simulate</param>
+/// <param name="agentVals">pointer to the agemnt training values to write to</param>
+/// <param name="currentAgent">The current agent for referencing agent training values</param>
+/// <returns>thread to attach to main process</returns>
 std::thread Game::agentSim(Agent * agent, std::vector<AgentTrainingValues> * agentVals, int currentAgent)
 {
 	return std::thread([=] {

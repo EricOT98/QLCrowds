@@ -10,6 +10,12 @@
 #include "Environment.h"
 #include "Agent.h"
 
+/// <summary>
+/// Default sdl main to use
+/// </summary>
+/// <param name="argc"></param>
+/// <param name="argv"></param>
+/// <returns></returns>
 int main(int argc, char * argv[]) {
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) < 0)

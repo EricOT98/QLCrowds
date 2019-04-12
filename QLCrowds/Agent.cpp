@@ -107,7 +107,7 @@ int Agent::getAction(Environment & env)
 }
 
 /// <summary>
-/// Train th eagent using the off policy Q learning method
+/// Train the agent using the off policy Q learning method
 /// </summary>
 /// <param name="t"></param>
 void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, float, bool> t)
@@ -135,6 +135,14 @@ void Agent::train(std::tuple<std::pair<int, int>, int, std::pair<int, int>, floa
 	Q[state.first][state.second][action] += beta * (reward + gamma * maxElement - sa);
 }
 
+/// <summary>
+/// Get an action for the agent corresponding to the following rbm rules
+/// - Only choose from available actions in the environment
+/// - From those actions choose an action that will move you one step closer to 1 of your possible closest goals
+/// - if backtracking is disabled prevent taking your previous action if only 1 action is available take that action even if it backtracks
+/// </summary>
+/// <param name="env">The enviornment for the agent to choose an action from</param>
+/// <returns>The index of the action for the agent to take</returns>
 int Agent::getActionRBMBased(Environment & env)
 {
 	auto allowedActions = env.allowedActions(m_currentState);
@@ -185,17 +193,24 @@ int Agent::getActionRBMBased(Environment & env)
 	std::uniform_int_distribution<int>  distr;
 	distr = std::uniform_int_distribution<int>(0, allowedActions.size() - 1);
 	int index = distr(generator);
-	if (std::find(allowedActions.begin(), allowedActions.end(), env.action_dict["none"]) != allowedActions.end()) {
-		//std::cout << "None action found" << std::endl;
-	}
 	return allowedActions.at(index);
 }
 
-int Agent::getMultiAgentAction(Environment & env)
-{
-	return 0;
-}
-
+/// <summary>
+/// Get an action for the agent corresponding to the following rbm rules
+/// - Only choose from available action sin the environment
+/// - From those available actions choose one based on the following:
+///		- If you have more than the minimum number of steps to reach the goal:
+///			- Take an action that moves you one step to your closest other agent
+///			- If backtracking is turned off this will result in agents circling around one another
+///			- Otherwise agents should occupy the same cell to generate a socialising effect
+///		- Else 
+///			- Take an action that moves you one step closer to the goal
+/// </summary>
+/// <param name="env">Environment to get the available actions from</param>
+/// <param name="currentIter"> The current iteration the agent is on to know if it is possible to make it to the goal</param>
+/// <param name="maxIters">The maximum number of iterations for the calculation of the agents ability to reach the goal</param>
+/// <returns>An integer representing the action to be taken</returns>
 int Agent::getMultiAgentActionRBM(Environment & env, int currentIter, const int maxIters)
 {
 	auto allowedActions = env.allowedActions(m_currentState);
@@ -297,6 +312,16 @@ int Agent::getMultiAgentActionRBM(Environment & env, int currentIter, const int 
 	return allowedActions.at(index);
 }
 
+/// <summary>
+/// Build a tinydnn neural network with one input layer, one hidden layer and one output layer with the following structure
+/// - Input Layer 
+///		- Num of nodes 2 + (2 * number of goals and obstacles  distance from the player states)
+/// - hidden layer ( sqrt(input * output)) based on a rule of thumb
+///  - use relu to convert any value to a range of 0 - infinity with negative being automatically 0
+/// - Output layer
+///		- Num of nodes 5 (one for every possible action)
+/// </summary>
+/// <returns></returns>
 tiny_dnn::network<tiny_dnn::sequential> Agent::buildModel()
 {
 	using namespace tiny_dnn;
@@ -334,11 +359,18 @@ tiny_dnn::network<tiny_dnn::sequential> Agent::buildModel()
 	return test_nn;
 }
 
+/// <summary>
+/// Update the target model weights to equal the -
+/// </summary>
 void Agent::updateTargetModel()
 {
 	targetModel = model;
 }
 
+/// <summary>
+/// Add a memory batch to the replay buffer for training purposes limiting the buffer to a maximum size
+/// </summary>
+/// <param name="memory"></param>
 void Agent::replayMemory(AgentMemoryBatch memory)
 {
 	m_memory.push_back(memory);
@@ -434,6 +466,9 @@ void Agent::trainReplay()
 	}
 }
 
+/// <summary>
+/// Resize the agents q table to the appropriate environment size
+/// </summary>
 void Agent::resizeQTable()
 {
 	Q.clear();
@@ -452,12 +487,19 @@ void Agent::resizeQTable()
 	}
 }
 
+/// <summary>
+/// Resize the agents state and action dimensions to correspond to the environment
+/// </summary>
 void Agent::resizeStates()
 {
 	stateDim = m_env.stateDim;
 	actionDim = m_env.actionDim;
 }
 
+/// <summary>
+/// display the generated optimal policy of the agent in relation to the given environment
+/// </summary>
+/// <param name="env">The given environment the agent trained in</param>
 void Agent::displayGreedyPolicy(Environment & env)
 {
 
@@ -494,6 +536,9 @@ void Agent::displayGreedyPolicy(Environment & env)
 	}
 }
 
+/// <summary>
+/// reset the agents training values
+/// </summary>
 void Agent::reset()
 {
 	epsilon = 1.f;
@@ -509,6 +554,10 @@ void Agent::reset()
 	}
 }
 
+/// <summary>
+/// Set the orientation of the agent sprite in accordance with the action
+/// </summary>
+/// <param name="action">The agents given action</param>
 void Agent::setOrientation(int action)
 {
 	switch (action)
@@ -531,6 +580,10 @@ void Agent::setOrientation(int action)
 	}
 }
 
+/// <summary>
+/// Render the agent to the sdl render window
+/// </summary>
+/// <param name="renderer"></param>
 void Agent::render(SDL_Renderer & renderer)
 {
 	m_sprite.render(&renderer, m_angle);
